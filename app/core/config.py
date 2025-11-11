@@ -1,15 +1,16 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator, model_validator
-from typing import List, Optional, Union, Dict, Any
 import json
-import os
 import logging
+import os
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
 try:
     import boto3
-    from botocore.exceptions import ClientError, BotoCoreError
+    from botocore.exceptions import BotoCoreError, ClientError
+
     BOTO3_AVAILABLE = True
 except ImportError:
     BOTO3_AVAILABLE = False
@@ -25,33 +26,32 @@ def get_env_file() -> str:
     return ".env"
 
 
-def load_aws_secrets(secret_name: str, region_name: str = None) -> Dict[str, str]:
+def load_aws_secrets(
+    secret_name: str, region_name: str | None = None
+) -> dict[str, str]:
     """
     Load secrets from AWS Secrets Manager.
-    
+
     Args:
         secret_name: Name of the secret in AWS Secrets Manager
         region_name: AWS region (defaults to AWS_REGION env var or us-east-1)
-    
+
     Returns:
         Dictionary of secret key-value pairs
     """
     if not BOTO3_AVAILABLE:
         logger.warning("boto3 not available, skipping AWS Secrets Manager")
         return {}
-    
+
     try:
         region = region_name or os.getenv("AWS_REGION", "us-east-1")
-        
+
         session = boto3.session.Session()
-        client = session.client(
-            service_name="secretsmanager",
-            region_name=region
-        )
-        
+        client = session.client(service_name="secretsmanager", region_name=region)
+
         # Retrieve secret
         response = client.get_secret_value(SecretId=secret_name)
-        
+
         # Parse secret (can be JSON string or plain text)
         secret_string = response["SecretString"]
         try:
@@ -66,7 +66,7 @@ def load_aws_secrets(secret_name: str, region_name: str = None) -> Dict[str, str
             # If not JSON, treat as plain text (one secret value)
             logger.warning(f"Secret {secret_name} is not JSON, treating as plain text")
             return {}
-            
+
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "Unknown")
         if error_code == "ResourceNotFoundException":
@@ -74,7 +74,7 @@ def load_aws_secrets(secret_name: str, region_name: str = None) -> Dict[str, str
         else:
             logger.error(f"Error retrieving secret {secret_name}: {e}")
         return {}
-    except (BotoCoreError, Exception) as e:
+    except BotoCoreError as e:
         logger.error(f"Error connecting to AWS Secrets Manager: {e}")
         return {}
     except Exception as e:
@@ -91,36 +91,36 @@ def should_use_aws_secrets() -> bool:
     env = os.getenv("ENVIRONMENT", "").lower()
     has_aws_region = bool(os.getenv("AWS_REGION"))
     has_secret_name = bool(os.getenv("AWS_SECRET_NAME"))
-    
+
     return env == "production" or has_aws_region or has_secret_name
 
 
 class Settings(BaseSettings):
     # AWS Secrets Manager configuration
     AWS_SECRET_NAME: str = "qpeptide-cutter-backend/secrets"
-    AWS_REGION: Optional[str] = None
-    
+    AWS_REGION: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=get_env_file(),
         env_file_encoding="utf-8",
         env_ignore_empty=True,
         case_sensitive=True,
-        extra="ignore"
+        extra="ignore",
     )
 
     # Database - MySQL
     DATABASE_URL: str = ""
     DATABASE_ECHO: bool = False
-    
+
     # API
     API_V1_PREFIX: str = "/api/v1"
-    
-    # CORS 
-    BACKEND_CORS_ORIGINS: Union[List[str], str] = ["http://localhost:3000"]
-    
+
+    # CORS
+    BACKEND_CORS_ORIGINS: list[str] | str = ["http://localhost:3000"]
+
     # Environment
-    ENVIRONMENT: str = "development"  
-    
+    ENVIRONMENT: str = "development"
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -131,10 +131,10 @@ class Settings(BaseSettings):
         if should_use_aws_secrets():
             secret_name = os.getenv("AWS_SECRET_NAME", self.AWS_SECRET_NAME)
             region = self.AWS_REGION or os.getenv("AWS_REGION")
-            
+
             logger.info(f"Loading secrets from AWS Secrets Manager: {secret_name}")
             secrets = load_aws_secrets(secret_name, region)
-            
+
             # Update settings with secrets from AWS (AWS secrets override .env values)
             for key, value in secrets.items():
                 if hasattr(self, key):
@@ -143,16 +143,18 @@ class Settings(BaseSettings):
                 else:
                     # Set new attributes from secrets
                     setattr(self, key, value)
-        
+
         # Validate required fields after loading all sources
         if not self.DATABASE_URL:
-            raise ValueError("DATABASE_URL is required but not set. Check .env file or AWS Secrets Manager.")
-        
+            raise ValueError(
+                "DATABASE_URL is required but not set. Check .env file or AWS Secrets Manager."
+            )
+
         return self
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def parse_cors_origins(cls, v: str | list[str]) -> list[str]:
         """Parse CORS origins from string (comma-separated or JSON) or return list."""
         if isinstance(v, list):
             return v

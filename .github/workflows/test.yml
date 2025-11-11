@@ -11,7 +11,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
@@ -64,4 +64,3 @@ jobs:
           DATABASE_URL: mysql+pymysql://testuser:testpassword@localhost:3306/qpeptide_cutter_test
           CI: true
         run: poetry run pytest tests/ -v --tb=short
-
