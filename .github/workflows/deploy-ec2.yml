@@ -1,0 +1,134 @@
+name: Deploy to EC2
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to ECR"]
+    types:
+      - completed
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    # Only run if the ECR workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get workflow run details
+        id: workflow-run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.payload.workflow_run.id,
+            });
+
+            // Extract commit SHA from the workflow run
+            const commitSha = run.data.head_sha;
+            core.setOutput('result', commitSha);
+            return commitSha;
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+          CONTAINER_NAME: ${{ secrets.EC2_CONTAINER_NAME }}
+          APP_PORT: ${{ secrets.EC2_PORT }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          echo "🚀 Deploying $IMAGE_URI to EC2..."
+
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+            set -e
+
+            # Login to ECR
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            # Pull the new image
+            echo "📥 Pulling image: $IMAGE_URI"
+            docker pull $IMAGE_URI
+
+            # Stop and remove old container if it exists
+            if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+              echo "🛑 Stopping old container: ${CONTAINER_NAME}"
+              docker stop ${CONTAINER_NAME} || true
+              docker rm ${CONTAINER_NAME} || true
+            fi
+
+            # Remove old image to save space (optional)
+            docker image prune -f
+
+            # Run new container
+            echo "▶️  Starting new container: ${CONTAINER_NAME}"
+            docker run -d \
+              --name ${CONTAINER_NAME} \
+              --restart unless-stopped \
+              -p ${APP_PORT}:8000 \
+              -e ENVIRONMENT=production \
+              -e AWS_REGION=${{ env.AWS_REGION }} \
+              $IMAGE_URI
+
+            # Wait a moment for container to start
+            sleep 5
+
+            # Verify container is running
+            if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+              echo "✅ Container ${CONTAINER_NAME} is running"
+
+              # Health check
+              echo "🏥 Checking health endpoint..."
+              sleep 10
+              if curl -f http://localhost:${APP_PORT}/health; then
+                echo "✅ Health check passed"
+              else
+                echo "⚠️  Health check failed, but container is running"
+              fi
+            else
+              echo "❌ Container failed to start"
+              docker logs ${CONTAINER_NAME} || true
+              exit 1
+            fi
+
+            echo "🎉 Deployment complete!"
+          ENDSSH
+
+      - name: Deployment summary
+        run: |
+          echo "### Deployment Complete :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**EC2 Instance:** \`${{ secrets.EC2_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Container:** \`${{ secrets.EC2_CONTAINER_NAME }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
