@@ -59,80 +59,67 @@ jobs:
         run: |
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
-          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-          CONTAINER_NAME: ${{ secrets.EC2_CONTAINER_NAME }}
-          APP_PORT: ${{ secrets.EC2_PORT }}
-        run: |
-          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          - name: Deploy to EC2
+          env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
+            ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+            CONTAINER_NAME: ${{ secrets.EC2_CONTAINER_NAME }}
+            APP_PORT: ${{ secrets.EC2_PORT }}
+          run: |
+            IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-          echo "🚀 Deploying $IMAGE_URI to EC2..."
+            echo "🚀 Deploying $IMAGE_URI to EC2..."
 
-          ssh -o StrictHostKeyChecking=no \
-            ECR_REGISTRY="$ECR_REGISTRY" \
-            IMAGE_URI="$IMAGE_URI" \
-            CONTAINER_NAME="$CONTAINER_NAME" \
-            APP_PORT="$APP_PORT" \
-            AWS_REGION="${{ env.AWS_REGION }}" \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'ENDSSH'
-            set -e
+            ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<ENDSSH
+              set -e
 
-            # Ensure no stale Docker Hub credentials remain
-            docker logout docker.io >/dev/null 2>&1 || true
-            docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
+              # Ensure no stale Docker Hub credentials remain
+              docker logout docker.io >/dev/null 2>&1 || true
+              docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
 
-            # Login to ECR
-            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+              # Login to ECR
+              aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-            echo "📥 Pulling image: $IMAGE_URI"
-            docker pull "$IMAGE_URI"
+              echo "📥 Pulling image: $IMAGE_URI"
+              docker pull $IMAGE_URI
 
-            # Stop and remove old container if it exists
-            if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-              echo "🛑 Stopping old container: ${CONTAINER_NAME}"
-              docker stop ${CONTAINER_NAME} || true
-              docker rm ${CONTAINER_NAME} || true
-            fi
-
-            # Remove old image to save space (optional)
-            docker image prune -f
-
-            # Run new container
-            echo "▶️  Starting new container: ${CONTAINER_NAME}"
-            docker run -d \
-              --name ${CONTAINER_NAME} \
-              --restart unless-stopped \
-              -p ${APP_PORT}:8000 \
-              -e ENVIRONMENT=production \
-              -e AWS_REGION=${{ env.AWS_REGION }} \
-              $IMAGE_URI
-
-            # Wait a moment for container to start
-            sleep 5
-
-            # Verify container is running
-            if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-              echo "✅ Container ${CONTAINER_NAME} is running"
-
-              # Health check
-              echo "🏥 Checking health endpoint..."
-              sleep 10
-              if curl -f http://localhost:${APP_PORT}/health; then
-                echo "✅ Health check passed"
-              else
-                echo "⚠️  Health check failed, but container is running"
+              if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+                echo "🛑 Stopping old container: ${CONTAINER_NAME}"
+                docker stop ${CONTAINER_NAME} || true
+                docker rm ${CONTAINER_NAME} || true
               fi
-            else
-              echo "❌ Container failed to start"
-              docker logs ${CONTAINER_NAME} || true
-              exit 1
-            fi
 
-            echo "🎉 Deployment complete!"
-          ENDSSH
+              docker image prune -f
+
+              echo "▶️  Starting new container: ${CONTAINER_NAME}"
+              docker run -d \
+                --name ${CONTAINER_NAME} \
+                --restart unless-stopped \
+                -p ${APP_PORT}:8000 \
+                -e ENVIRONMENT=production \
+                -e AWS_REGION=${{ env.AWS_REGION }} \
+                $IMAGE_URI
+
+              sleep 5
+
+              if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+                echo "✅ Container ${CONTAINER_NAME} is running"
+                echo "🏥 Checking health endpoint..."
+                sleep 10
+                if curl -f http://localhost:${APP_PORT}/health; then
+                  echo "✅ Health check passed"
+                else
+                  echo "⚠️  Health check failed, but container is running"
+                fi
+              else
+                echo "❌ Container failed to start"
+                docker logs ${CONTAINER_NAME} || true
+                exit 1
+              fi
+
+              echo "🎉 Deployment complete!"
+            ENDSSH
 
       - name: Deployment summary
         run: |
