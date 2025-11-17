@@ -71,7 +71,13 @@ jobs:
 
           echo "🚀 Deploying $IMAGE_URI to EC2..."
 
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
+          ssh -o StrictHostKeyChecking=no \
+            ECR_REGISTRY="$ECR_REGISTRY" \
+            IMAGE_URI="$IMAGE_URI" \
+            CONTAINER_NAME="$CONTAINER_NAME" \
+            APP_PORT="$APP_PORT" \
+            AWS_REGION="${{ env.AWS_REGION }}" \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<'ENDSSH'
             set -e
 
             # Ensure no stale Docker Hub credentials remain
@@ -79,11 +85,10 @@ jobs:
             docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
 
             # Login to ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+            aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-            # Pull the new image
             echo "📥 Pulling image: $IMAGE_URI"
-            docker pull $IMAGE_URI
+            docker pull "$IMAGE_URI"
 
             # Stop and remove old container if it exists
             if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
