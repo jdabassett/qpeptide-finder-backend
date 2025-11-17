@@ -79,27 +79,27 @@ jobs:
             docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
 
             # Login to ECR
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
             echo "📥 Pulling image: $IMAGE_URI"
-            docker pull $IMAGE_URI
+            docker pull "$IMAGE_URI"
 
             if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
               echo "🛑 Stopping old container: ${CONTAINER_NAME}"
-              docker stop ${CONTAINER_NAME} || true
-              docker rm ${CONTAINER_NAME} || true
+              docker stop "${CONTAINER_NAME}" || true
+              docker rm "${CONTAINER_NAME}" || true
             fi
 
             docker image prune -f
 
             echo "▶️  Starting new container: ${CONTAINER_NAME}"
             docker run -d \
-              --name ${CONTAINER_NAME} \
+              --name "${CONTAINER_NAME}" \
               --restart unless-stopped \
-              -p ${APP_PORT}:8000 \
+              -p "${APP_PORT}:8000" \
               -e ENVIRONMENT=production \
               -e AWS_REGION=${{ env.AWS_REGION }} \
-              $IMAGE_URI
+              "$IMAGE_URI"
 
             sleep 5
 
@@ -107,7 +107,7 @@ jobs:
               echo "✅ Container ${CONTAINER_NAME} is running"
               echo "🏥 Checking health endpoint..."
               sleep 10
-              if curl -f http://localhost:${APP_PORT}/health; then
+              if curl -f "http://localhost:${APP_PORT}/health"; then
                 echo "✅ Health check passed"
               else
                 echo "⚠️ Health check failed (container still running)"
@@ -117,7 +117,7 @@ jobs:
               echo "🎉 Deployment complete!"
             else
               echo "❌ Container failed to start"
-              docker logs ${CONTAINER_NAME} || true
+              docker logs "${CONTAINER_NAME}" || true
               exit 1
             fi
           ENDSSH
