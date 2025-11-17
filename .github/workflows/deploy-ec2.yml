@@ -74,6 +74,10 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             set -e
 
+            # Ensure no stale Docker Hub credentials remain
+            docker logout docker.io >/dev/null 2>&1 || true
+            docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
+
             # Login to ECR
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
