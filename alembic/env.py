@@ -1,6 +1,6 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 
 from alembic import context
 from app.core.config import settings
@@ -13,7 +13,9 @@ if config.config_file_name is not None:
 
 target_metadata = BaseModel.metadata
 
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Fix: Set URL directly to avoid configparser interpolation issues
+# This prevents errors when DATABASE_URL contains special characters like %, #, etc.
+config.attributes["sqlalchemy.url"] = settings.DATABASE_URL
 
 
 def run_migrations_offline() -> None:
@@ -28,7 +30,8 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    # Use DATABASE_URL directly from settings to avoid configparser issues
+    url = settings.DATABASE_URL
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -47,9 +50,10 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    # Create engine directly from DATABASE_URL to avoid configparser interpolation
+    # This prevents errors when passwords contain special characters like %, #, etc.
+    connectable = create_engine(
+        settings.DATABASE_URL,
         poolclass=pool.NullPool,
     )
 
