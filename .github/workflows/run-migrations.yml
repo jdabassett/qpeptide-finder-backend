@@ -1,0 +1,99 @@
+name: Run Database Migrations
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to ECR"]
+    types:
+      - completed
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+
+jobs:
+  migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get workflow run details
+        id: workflow-run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the commit SHA from the migration workflow run
+            const migrationRun = context.payload.workflow_run;
+            const commitSha = migrationRun.head_sha;
+            core.setOutput('result', commitSha);
+            return commitSha;
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Run Database Migrations
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
+          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          echo "🔄 Running database migrations with image: $IMAGE_URI"
+
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<ENDSSH
+            set -e
+
+            # Ensure no stale Docker Hub credentials remain
+            docker logout docker.io >/dev/null 2>&1 || true
+            docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
+
+            # Login to ECR
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+            # Pull the latest image for migrations
+            echo "📥 Pulling image for migrations: $IMAGE_URI"
+            docker pull "$IMAGE_URI"
+
+            # Run migrations in a temporary container
+            echo "🗄️  Running Alembic migrations..."
+            docker run --rm \
+              -e ENVIRONMENT=production \
+              -e AWS_REGION=${{ env.AWS_REGION }} \
+              "$IMAGE_URI" \
+              alembic upgrade head
+
+            echo "✅ Migrations completed successfully"
+          ENDSSH
+
+      - name: Migration summary
+        run: |
+          echo "### Database Migrations Complete :white_check_mark:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**EC2 Instance:** \`${{ secrets.EC2_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Migrations have been applied to the database." >> $GITHUB_STEP_SUMMARY

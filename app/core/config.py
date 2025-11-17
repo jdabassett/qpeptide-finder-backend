@@ -96,10 +96,6 @@ def should_use_aws_secrets() -> bool:
 
 
 class Settings(BaseSettings):
-    # AWS Secrets Manager configuration
-    AWS_SECRET_NAME: str = "qpeptide-cutter-backend/secrets"
-    AWS_REGION: str | None = None
-
     model_config = SettingsConfigDict(
         env_file=get_env_file(),
         env_file_encoding="utf-8",
@@ -107,6 +103,10 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore",
     )
+
+    # AWS Secrets Manager configuration
+    AWS_SECRET_NAME: str = "qpeptide-cutter-backend/secrets"
+    AWS_REGION: str | None = None
 
     # Database - MySQL
     DATABASE_URL: str = ""
