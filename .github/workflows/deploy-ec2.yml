@@ -92,7 +92,7 @@ jobs:
 
             docker image prune -f
 
-            echo "▶️  Starting new container: ${CONTAINER_NAME}"
+            echo "Starting new container: ${CONTAINER_NAME}"
             docker run -d \
               --name "${CONTAINER_NAME}" \
               --restart unless-stopped \
