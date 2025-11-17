@@ -81,6 +81,7 @@ jobs:
             # Run migrations in a temporary container
             echo "🗄️  Running Alembic migrations..."
             docker run --rm \
+              --network host \
               -e ENVIRONMENT=production \
               -e AWS_REGION=${{ env.AWS_REGION }} \
               "$IMAGE_URI" \
