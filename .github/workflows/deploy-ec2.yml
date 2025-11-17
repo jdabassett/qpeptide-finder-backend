@@ -110,16 +110,13 @@ jobs:
               if curl -f http://localhost:${APP_PORT}/health; then
                 echo "✅ Health check passed"
               else
-                echo "⚠️  Health check failed, but container is running"
+                echo "❌ Container failed to start"
+                docker logs ${CONTAINER_NAME} || true
+                exit 1
               fi
-            else
-              echo "❌ Container failed to start"
-              docker logs ${CONTAINER_NAME} || true
-              exit 1
-            fi
 
-            echo "🎉 Deployment complete!"
-          ENDSSH
+              echo "🎉 Deployment complete!"
+            ENDSSH
 
       - name: Deployment summary
         run: |
