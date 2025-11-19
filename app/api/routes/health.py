@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from sqlalchemy import text
 
-router = APIRouter()
+health_router = APIRouter()
 
 
-@router.get("/health")
+@health_router.get("/health")
 async def health():
     """Health check endpoint for container orchestration."""
     try:
