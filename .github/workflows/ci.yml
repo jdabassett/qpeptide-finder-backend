@@ -184,6 +184,7 @@ jobs:
           # Test that the container starts (with a timeout)
           timeout 30 docker run --rm \
             --network host \
+            -e MYSQL_HOST="localhost" \
             -e DATABASE_URL="mysql+pymysql://qpeptide_user:qpeptide_password@localhost:3306/qpeptide-db" \
             -e MYSQL_ROOT_PASSWORD="rootpassword" \
             -e MYSQL_USER="qpeptide_user" \

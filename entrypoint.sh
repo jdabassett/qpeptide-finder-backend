@@ -5,6 +5,10 @@ set -e
 ENVIRONMENT=${ENVIRONMENT:-development}
 echo "🌍 Environment: $ENVIRONMENT"
 
+# MySQL hostname - defaults to 'mysql' for Docker Compose, but can be overridden
+MYSQL_HOST=${MYSQL_HOST:-mysql}
+echo "🔌 MySQL host: $MYSQL_HOST"
+
 # Function to wait for MySQL server using root credentials
 wait_for_mysql() {
     local max_attempts=3
@@ -14,13 +18,14 @@ wait_for_mysql() {
 
     while [ $attempt -le $max_attempts ]; do
         # Simple root connection test (no app config needed)
-        if python3 << 'PYTHON_SCRIPT'
+        if python3 << PYTHON_SCRIPT
 import os
 import sys
 from sqlalchemy import create_engine, text
 
 root_password = os.getenv('MYSQL_ROOT_PASSWORD', 'rootpassword')
-root_url = f'mysql+pymysql://root:{root_password}@mysql:3306/mysql'
+mysql_host = os.getenv('MYSQL_HOST', 'mysql')
+root_url = f'mysql+pymysql://root:{root_password}@{mysql_host}:3306/mysql'
 
 try:
     engine = create_engine(root_url, connect_args={'connect_timeout': 3})
@@ -43,11 +48,12 @@ PYTHON_SCRIPT
 
     echo "❌ MySQL server not ready after $max_attempts attempts"
     echo "💡 Last error:"
-    python3 << 'PYTHON_SCRIPT'
+    python3 << PYTHON_SCRIPT
 import os
 from sqlalchemy import create_engine, text
 root_password = os.getenv('MYSQL_ROOT_PASSWORD', 'rootpassword')
-root_url = f'mysql+pymysql://root:{root_password}@mysql:3306/mysql'
+mysql_host = os.getenv('MYSQL_HOST', 'mysql')
+root_url = f'mysql+pymysql://root:{root_password}@{mysql_host}:3306/mysql'
 try:
     engine = create_engine(root_url, connect_args={'connect_timeout': 2})
     with engine.connect() as conn:
@@ -67,7 +73,7 @@ create_database_if_needed() {
 
     echo "🗄️  Ensuring database exists and user has permissions (local development)..."
 
-    python3 << 'PYTHON_SCRIPT'
+    python3 << PYTHON_SCRIPT
 import os
 from sqlalchemy import create_engine, text
 
@@ -75,7 +81,8 @@ from sqlalchemy import create_engine, text
 db_name = os.getenv('DB_NAME', 'qpeptide-db')
 db_user = os.getenv('MYSQL_USER', 'qpeptide_user')
 root_password = os.getenv('MYSQL_ROOT_PASSWORD', 'rootpassword')
-root_url = f'mysql+pymysql://root:{root_password}@mysql:3306/mysql'
+mysql_host = os.getenv('MYSQL_HOST', 'mysql')
+root_url = f'mysql+pymysql://root:{root_password}@{mysql_host}:3306/mysql'
 
 try:
     engine = create_engine(root_url, connect_args={'connect_timeout': 10})
