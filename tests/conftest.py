@@ -5,6 +5,7 @@ Pytest configuration and shared fixtures.
 from collections.abc import Generator
 
 import pytest
+from factory.alchemy import SQLAlchemyModelFactory
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -54,7 +55,13 @@ def db_session(test_engine) -> Generator[Session]:
     transaction = connection.begin()
     session = sessionmaker(bind=connection)()
 
+    for factory_class in SQLAlchemyModelFactory.__subclasses__():
+        factory_class._meta.sqlalchemy_session = session
+
     yield session
+
+    for factory_class in SQLAlchemyModelFactory.__subclasses__():
+        factory_class._meta.sqlalchemy_session = None
 
     session.close()
     transaction.rollback()
