@@ -5,20 +5,45 @@ set -e
 ENVIRONMENT=${ENVIRONMENT:-development}
 echo "🌍 Environment: $ENVIRONMENT"
 
-# MySQL hostname - defaults to 'mysql' for Docker Compose, but can be overridden
-MYSQL_HOST=${MYSQL_HOST:-mysql}
-echo "🔌 MySQL host: $MYSQL_HOST"
-
-# Function to wait for MySQL server using root credentials
+# Function to wait for MySQL server
 wait_for_mysql() {
     local max_attempts=3
     local attempt=1
 
     echo "🔄 Waiting for MySQL server to be ready..."
 
-    while [ $attempt -le $max_attempts ]; do
-        # Simple root connection test (no app config needed)
-        if python3 << 'PYTHON_SCRIPT'
+    if [ "$ENVIRONMENT" = "production" ]; then
+        # Production: Use app's DATABASE_URL (RDS doesn't provide root access)
+        while [ $attempt -le $max_attempts ]; do
+            if python3 << 'PYTHON_SCRIPT'
+import os
+import sys
+from app.core.config import settings
+from sqlalchemy import create_engine, text
+
+try:
+    engine = create_engine(settings.DATABASE_URL, connect_args={'connect_timeout': 3})
+    with engine.connect() as conn:
+        conn.execute(text('SELECT 1'))
+    sys.exit(0)
+except Exception as e:
+    print(f'Connection attempt failed: {e}', file=sys.stderr)
+    sys.exit(1)
+PYTHON_SCRIPT
+            then
+                echo "✅ MySQL server is ready"
+                return 0
+            fi
+
+            echo "⏳ Waiting for MySQL server... ($attempt/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+        done
+    else
+        # Development: Use root credentials
+        MYSQL_HOST=${MYSQL_HOST:-mysql}
+        while [ $attempt -le $max_attempts ]; do
+            if python3 << 'PYTHON_SCRIPT'
 import os
 import sys
 from sqlalchemy import create_engine, text
@@ -36,31 +61,18 @@ except Exception as e:
     print(f'Connection attempt failed: {e}', file=sys.stderr)
     sys.exit(1)
 PYTHON_SCRIPT
-        then
-            echo "✅ MySQL server is ready"
-            return 0
-        fi
+            then
+                echo "✅ MySQL server is ready"
+                return 0
+            fi
 
-        echo "⏳ Waiting for MySQL server... ($attempt/$max_attempts)"
-        sleep 2
-        attempt=$((attempt + 1))
-    done
+            echo "⏳ Waiting for MySQL server... ($attempt/$max_attempts)"
+            sleep 2
+            attempt=$((attempt + 1))
+        done
+    fi
 
     echo "❌ MySQL server not ready after $max_attempts attempts"
-    echo "💡 Last error:"
-    python3 << 'PYTHON_SCRIPT'
-import os
-from sqlalchemy import create_engine, text
-root_password = os.getenv('MYSQL_ROOT_PASSWORD', 'rootpassword')
-mysql_host = os.getenv('MYSQL_HOST', 'mysql')
-root_url = f'mysql+pymysql://root:{root_password}@{mysql_host}:3306/mysql'
-try:
-    engine = create_engine(root_url, connect_args={'connect_timeout': 2})
-    with engine.connect() as conn:
-        conn.execute(text('SELECT 1'))
-except Exception as e:
-    print(f'  {e}')
-PYTHON_SCRIPT
     return 1
 }
 
@@ -143,13 +155,13 @@ PYTHON_SCRIPT
 # Main execution
 echo "🚀 Starting database initialization..."
 
-# Step 1: Wait for MySQL server
+# Step 1: Wait for MySQL server (uses different method for prod vs dev)
 if ! wait_for_mysql; then
     echo "❌ Failed to connect to MySQL server"
     exit 1
 fi
 
-# Step 2: Create database (local only)
+# Step 2: Create database (local only - skipped in production)
 create_database_if_needed
 
 # Step 3: Verify connection to target database
