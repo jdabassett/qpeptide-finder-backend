@@ -5,7 +5,11 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class BaseModel(DeclarativeBase):
+class Base(DeclarativeBase):
+    pass
+
+
+class BaseModel(Base):
     """Base model with common fields for all tables."""
 
     __abstract__ = True
@@ -18,4 +22,14 @@ class BaseModel(DeclarativeBase):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )
+
+
+class BaseModelNoTimestamps(Base):
+    """Base model with only primary key (no timestamps)."""
+
+    __abstract__ = True
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=lambda: str(uuid4()), index=True
     )

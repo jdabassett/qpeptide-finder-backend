@@ -16,7 +16,7 @@ from app.main import app
 
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Digest, Peptide, Protein, User  # noqa: F401
-from app.models.base import BaseModel
+from app.models.base import Base
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -37,11 +37,11 @@ def test_engine():
     )
 
     # Create all tables
-    BaseModel.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     yield engine
 
-    BaseModel.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind=engine)
     engine.dispose()
 
 

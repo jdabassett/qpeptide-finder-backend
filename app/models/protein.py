@@ -3,14 +3,14 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModelNoTimestamps
 
 if TYPE_CHECKING:
     from app.models.digest import Digest
     from app.models.user import User
 
 
-class Protein(BaseModel):
+class Protein(BaseModelNoTimestamps):
     __tablename__ = "proteins"
 
     uni_prot_accession_number: Mapped[str | None] = mapped_column(

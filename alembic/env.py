@@ -4,14 +4,17 @@ from sqlalchemy import create_engine, pool
 
 from alembic import context
 from app.core.config import settings
-from app.models.base import BaseModel
+
+# Import all models to ensure they're registered with Base.metadata
+from app.models import Digest, DigestProtease, Peptide, Protein, User  # noqa: F401
+from app.models.base import Base
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = BaseModel.metadata
+target_metadata = Base.metadata
 
 # Fix: Set URL directly to avoid configparser interpolation issues
 # This prevents errors when DATABASE_URL contains special characters like %, #, etc.
