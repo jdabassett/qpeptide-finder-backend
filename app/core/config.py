@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Annotated, Any, Union, get_args, get_origin
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -95,6 +96,30 @@ def should_use_aws_secrets() -> bool:
     return env == "production" or has_aws_region or has_secret_name
 
 
+def _normalize_field_type(annotation: Any) -> type[Any] | None:
+    """
+    Extract the underlying Python type from a Pydantic annotation.
+    Handles Annotated, Optional, and other typing constructs.
+    """
+    origin = get_origin(annotation)
+
+    if origin is None:
+        return annotation if isinstance(annotation, type) else None
+
+    # Handle Annotated[T, ...]
+    if origin is Annotated:
+        return _normalize_field_type(get_args(annotation)[0])
+
+    # Handle Optional[T] / Union[T, None]
+    if origin is Union:
+        non_none_args = [arg for arg in get_args(annotation) if arg is not type(None)]
+        if non_none_args:
+            return _normalize_field_type(non_none_args[0])
+        return None
+
+    return origin if isinstance(origin, type) else None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=get_env_file(),
@@ -148,9 +173,22 @@ class Settings(BaseSettings):
             # Update settings with secrets from AWS (AWS secrets override .env values)
             for key, value in secrets.items():
                 if hasattr(self, key):
-                    # Override existing values with AWS secrets
-                    # Use setattr to trigger validators if they exist
-                    setattr(self, key, value)
+                    field_info = self.model_fields.get(key)
+                    value_to_set: Any = value
+                    if field_info:
+                        field_type = _normalize_field_type(field_info.annotation)
+
+                        # Convert string booleans to actual booleans
+                        if field_type is bool and isinstance(value, str):
+                            value_to_set = value.lower() in ("true", "1", "yes", "on")
+                        # Convert string ints to ints
+                        elif field_type is int and isinstance(value, str):
+                            try:
+                                value_to_set = int(value)
+                            except ValueError:
+                                value_to_set = value
+
+                    setattr(self, key, value_to_set)
                 else:
                     # Set new attributes from secrets
                     setattr(self, key, value)

@@ -126,22 +126,25 @@ jobs:
               docker logs --tail 50 "${CONTAINER_NAME}" || true
 
               echo "🏥 Checking health endpoint..."
-              sleep 15  # Increased wait time
+              sleep 15
 
               # Try health check with retries
-              for i in {1..3}; do
-                echo "Health check attempt $i/3..."
-                if curl -f -m 5 "http://localhost:${APP_PORT}/health"; then
+              MAX_ATTEMPTS=3
+              ATTEMPT=1
+              while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+                echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
+                if curl -f -m 5 "http://localhost:${APP_PORT}/health" > /dev/null 2>&1; then
                   echo "✅ Health check passed"
                   break
                 else
-                  if [ $i -eq 3 ]; then
-                    echo "⚠️ Health check failed after 3 attempts"
+                  if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                    echo "⚠️ Health check failed after $MAX_ATTEMPTS attempts"
                     echo "📋 Container logs:"
                     docker logs --tail 100 "${CONTAINER_NAME}" || true
                     exit 1
                   fi
                   sleep 5
+                  ATTEMPT=$((ATTEMPT + 1))
                 fi
               done
 
