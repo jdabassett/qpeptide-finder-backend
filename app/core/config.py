@@ -163,6 +163,7 @@ class Settings(BaseSettings):
                                 pass  # Keep original value if conversion fails
 
                     # Override existing values with AWS secrets
+                    # Use setattr to trigger validators if they exist
                     setattr(self, key, value)
                 else:
                     # Set new attributes from secrets
