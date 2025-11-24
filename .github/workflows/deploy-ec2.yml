@@ -114,22 +114,41 @@ jobs:
               -e AWS_REGION=${{ env.AWS_REGION }} \
               "$IMAGE_URI"
 
-            sleep 5
+            echo "📋 Checking container logs..."
+            sleep 3
+            docker logs "${CONTAINER_NAME}" || true
+
+            sleep 10
 
             if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
               echo "✅ Container ${CONTAINER_NAME} is running"
+              echo "📋 Recent container logs:"
+              docker logs --tail 50 "${CONTAINER_NAME}" || true
+
               echo "🏥 Checking health endpoint..."
-              sleep 10
-              if curl -f "http://localhost:${APP_PORT}/health"; then
-                echo "✅ Health check passed"
-              else
-                echo "⚠️ Health check failed (container still running)"
-                exit 1
-              fi
+              sleep 15  # Increased wait time
+
+              # Try health check with retries
+              for i in {1..3}; do
+                echo "Health check attempt $i/3..."
+                if curl -f -m 5 "http://localhost:${APP_PORT}/health"; then
+                  echo "✅ Health check passed"
+                  break
+                else
+                  if [ $i -eq 3 ]; then
+                    echo "⚠️ Health check failed after 3 attempts"
+                    echo "📋 Container logs:"
+                    docker logs --tail 100 "${CONTAINER_NAME}" || true
+                    exit 1
+                  fi
+                  sleep 5
+                fi
+              done
 
               echo "🎉 Deployment complete!"
             else
               echo "❌ Container failed to start"
+              echo "📋 Container logs:"
               docker logs "${CONTAINER_NAME}" || true
               exit 1
             fi

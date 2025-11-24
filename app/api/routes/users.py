@@ -56,3 +56,40 @@ def create_or_retrieve_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred: {str(e)}",
         ) from e
+
+
+@users_router.delete("/email/{email}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_by_email(email: str, session: Session = Depends(get_db)):
+    """
+    Delete a user by email address.
+
+    - email: Email address of the user to delete
+    - Returns 204 No Content on success
+    - Returns 404 if user not found
+    - Returns 400/500 for other errors
+    """
+    query: Select = select(User).where(User.email == email)
+    user: User | None = session.scalar(query)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email {email} not found",
+        )
+
+    try:
+        session.delete(user)
+        session.commit()
+        return None
+    except IntegrityError as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to delete user due to database constraint violation. Error: {str(e)}",
+        ) from e
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while deleting user: {str(e)}",
+        ) from e
