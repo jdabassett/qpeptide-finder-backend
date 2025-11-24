@@ -3,13 +3,13 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModelNoTimestamps
 
 if TYPE_CHECKING:
     from app.models.digest import Digest
 
 
-class Peptide(BaseModel):
+class Peptide(BaseModelNoTimestamps):
     __tablename__ = "peptides"
 
     digest_id: Mapped[str] = mapped_column(
