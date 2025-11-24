@@ -93,3 +93,41 @@ def test_failed_create_user(client: TestClient, request_body):
     )
 
     assert response.status_code == 422
+
+
+@pytest.mark.unit
+def test_delete_user_by_email_success(client: TestClient, db_session: Session):
+    """Test successfully deleting a user by email."""
+    # setup
+    user: User = UserFactory.create()
+    user_email: str = user.email
+
+    # execute
+    response = client.delete(f"/api/v1/users/email/{user_email}")
+
+    # validate
+    assert response.status_code == 204
+    assert response.content == b""
+
+    deleted_user = db_session.query(User).filter(User.email == user_email).first()
+    assert deleted_user is None
+
+
+@pytest.mark.unit
+def test_delete_user_by_email_no_user_found(client: TestClient, db_session: Session):
+    """Test if no user is found associated with given email."""
+    # setup
+    user: User = UserFactory.create()
+
+    # execute
+    response = client.delete("/api/v1/users/email/email_wont_be_found@email.com")
+
+    # validate
+    assert response.status_code == 404
+    assert (
+        response.content
+        == b'{"detail":"User with email email_wont_be_found@email.com not found"}'
+    )
+
+    user_retrieved = db_session.query(User).first()
+    assert user_retrieved.id == user.id
