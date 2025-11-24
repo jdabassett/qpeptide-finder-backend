@@ -148,8 +148,21 @@ class Settings(BaseSettings):
             # Update settings with secrets from AWS (AWS secrets override .env values)
             for key, value in secrets.items():
                 if hasattr(self, key):
+                    # Convert value types based on field type before setting
+                    field_info = self.model_fields.get(key)
+                    if field_info:
+                        field_type = field_info.annotation
+                        # Convert boolean strings to actual booleans
+                        if field_type is bool and isinstance(value, str):
+                            value = value.lower() in ("true", "1", "yes", "on")
+                        # Convert integer strings to integers
+                        elif field_type is int and isinstance(value, str):
+                            try:
+                                value = int(value)
+                            except ValueError:
+                                pass  # Keep original value if conversion fails
+
                     # Override existing values with AWS secrets
-                    # Use setattr to trigger validators if they exist
                     setattr(self, key, value)
                 else:
                     # Set new attributes from secrets
