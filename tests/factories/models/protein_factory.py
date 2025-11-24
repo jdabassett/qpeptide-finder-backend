@@ -7,7 +7,7 @@ from factory.alchemy import SQLAlchemyModelFactory
 from factory.faker import Faker
 
 from app.models.protein import Protein
-from tests.factories.user_factory import UserFactory
+from tests.factories.models.user_factory import UserFactory
 
 
 class ProteinFactory(SQLAlchemyModelFactory):

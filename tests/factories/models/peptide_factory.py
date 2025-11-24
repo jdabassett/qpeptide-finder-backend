@@ -9,7 +9,7 @@ from factory.alchemy import SQLAlchemyModelFactory
 from factory.faker import Faker
 
 from app.models.peptides import Peptide
-from tests.factories.digest_factory import DigestFactory
+from tests.factories.models.digest_factory import DigestFactory
 
 
 class PeptideFactory(SQLAlchemyModelFactory):

@@ -10,8 +10,8 @@ from factory.alchemy import SQLAlchemyModelFactory
 from app.enums.digest_statuses import DigestStatusEnum
 from app.enums.proteases import ProteaseEnum
 from app.models.digest import Digest
-from tests.factories.protein_factory import ProteinFactory
-from tests.factories.user_factory import UserFactory
+from tests.factories.models.protein_factory import ProteinFactory
+from tests.factories.models.user_factory import UserFactory
 
 
 class DigestFactory(SQLAlchemyModelFactory):
