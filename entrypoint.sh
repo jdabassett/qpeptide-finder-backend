@@ -180,4 +180,5 @@ verify_connection
 
 echo "✅ Database initialization complete"
 echo "🚀 Starting application..."
+echo "📝 Command: $@"
 exec "$@"
