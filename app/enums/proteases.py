@@ -8,3 +8,8 @@ class ProteaseEnum(str, PyEnum):
     ELASTASE = "elastase"
     PROTEINASE_K = "proteinase_k"
     THERMOLYSIN = "thermolysin"
+
+
+class ProteaseOrderingEnum(str, PyEnum):
+    ORDERED = "ordered"
+    COMBINED = "combined"
