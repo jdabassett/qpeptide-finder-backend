@@ -125,6 +125,16 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    @field_validator("DATABASE_ECHO", mode="before")
+    @classmethod
+    def parse_database_echo(cls, v: str | bool) -> bool:
+        """Convert string boolean to actual boolean."""
+        if isinstance(v, bool):
+            return v
+        if isinstance(v, str):
+            return v.lower() in ("true", "1", "yes", "on")
+        return False
+
     @model_validator(mode="after")
     def load_aws_secrets_if_needed(self) -> "Settings":
         """Load secrets from AWS Secrets Manager if in production/AWS environment."""
@@ -139,6 +149,7 @@ class Settings(BaseSettings):
             for key, value in secrets.items():
                 if hasattr(self, key):
                     # Override existing values with AWS secrets
+                    # Use setattr to trigger validators if they exist
                     setattr(self, key, value)
                 else:
                     # Set new attributes from secrets
