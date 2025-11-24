@@ -26,6 +26,10 @@ wheels/
 # Environment
 .env
 .env.local
+.env.*.local
+
+# But keep the example
+!.env.example
 
 # IDEs
 .vscode/

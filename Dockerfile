@@ -33,6 +33,10 @@ COPY app ./app
 COPY alembic ./alembic
 COPY alembic.ini ./
 
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
@@ -40,5 +44,6 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Run the application
+# Use entrypoint to run migrations before starting app
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

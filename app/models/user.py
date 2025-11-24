@@ -14,7 +14,7 @@ class User(BaseModel):
     __tablename__ = "users"
 
     username: Mapped[str] = mapped_column(
-        String(50), unique=True, index=True, nullable=False
+        String(50), unique=False, index=True, nullable=False
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
 

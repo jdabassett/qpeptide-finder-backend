@@ -1,0 +1,95 @@
+"""
+Tests for the users endpoint with database integration.
+"""
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
+
+from app.models.user import User
+from tests.factories.dto.user_factory import UserCreateFactory
+from tests.factories.models.user_factory import UserFactory
+
+
+@pytest.mark.unit
+def test_create_user(client: TestClient, db_session: Session):
+    """Test creating a new user."""
+    # setup
+    user_request: UserCreateFactory = UserCreateFactory.build()
+    user_request_dict: dict[str, str] = user_request.model_dump()
+
+    # execute
+    response = client.post(
+        "/api/v1/users",
+        json=user_request_dict,
+    )
+
+    # validate
+    # response is accurate
+    assert response.status_code == 201
+    data = response.json()
+    assert data["username"] == user_request.username
+    assert data["email"] == user_request.email
+    assert "id" in data
+    assert "created_at" in data
+    assert "updated_at" in data
+
+    # new record is created
+    user = db_session.query(User).filter(User.email == user_request.email).first()
+    assert user is not None
+    assert user.email == user_request.email
+
+
+@pytest.mark.unit
+def test_update_user(client: TestClient, db_session: Session):
+    """Test update user."""
+    # setup
+    user_request: UserCreateFactory = UserCreateFactory.build()
+    user_request_dict: dict[str, str] = user_request.model_dump()
+    user_record: UserFactory = UserFactory.create(
+        username="foobar", email=user_request.email
+    )
+
+    # execute
+    response = client.post(
+        "/api/v1/users",
+        json=user_request_dict,
+    )
+
+    # validate
+    # response is accurate
+    assert response.status_code == 201
+    data = response.json()
+    assert data["username"] == user_request.username
+    assert data["email"] == user_request.email
+    assert "id" in data
+    assert "created_at" in data
+    assert "updated_at" in data
+
+    # record has been updated
+    user = db_session.query(User).filter(User.email == user_request.email).first()
+    assert user is not None
+    assert user.id == user_record.id
+    assert user.email == user_record.email
+    assert user.username == user_record.username
+    assert user.username != "foobar"
+
+
+@pytest.mark.parametrize(
+    "request_body",
+    [
+        {"username": "", "email": "test@example.com"},
+        {"username": "username", "email": ""},
+        {"email": ""},
+        {"username": "username"},
+    ],
+)
+@pytest.mark.unit
+def test_failed_create_user(client: TestClient, request_body):
+    """Test that endpoint won't create new user when missing required data."""
+    response = client.post(
+        "/api/v1/users",
+        json=request_body,
+    )
+
+    assert response.status_code == 422

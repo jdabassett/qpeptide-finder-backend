@@ -1,14 +1,11 @@
-version: '3.8'
-
 services:
-  # MySQL Database
   mysql:
     image: mysql:8.0
     container_name: qpeptide-mysql-local
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: qpeptide_cutter
+      MYSQL_DATABASE: qpeptide-db
       MYSQL_USER: qpeptide_user
       MYSQL_PASSWORD: qpeptide_password
     ports:
@@ -36,14 +33,19 @@ services:
       - .env
     environment:
       - ENVIRONMENT=development
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_USER=qpeptide_user
+      - DATABASE_URL=mysql+pymysql://qpeptide_user:qpeptide_password@mysql:3306/qpeptide-db
+      - DATABASE_ECHO=false
+      - BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
     volumes:
-      - ./.env:/app/.env:ro
+      - ./app:/app/app:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 90s
     networks:
       - qpeptide-network
     depends_on:
