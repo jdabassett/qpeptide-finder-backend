@@ -59,7 +59,7 @@ class DigestRequest(BaseModel):
     def validate_proteases(cls, v) -> list[ProteaseAction]:
         """Validates there there are no duplicate proteases and that the order is accurate."""
         sorted_proteases: list[ProteaseAction] = sorted(v, key=lambda x: int(x.order))
-        proteases_counter: Counter[str, int] = Counter(
+        proteases_counter: Counter[str] = Counter(
             [each.protease.value for each in sorted_proteases]
         )
         if any(count > 1 for count in proteases_counter.values()):
