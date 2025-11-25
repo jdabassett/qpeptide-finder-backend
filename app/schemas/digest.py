@@ -1,7 +1,9 @@
+from collections import Counter
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.enums import AminoAcidEnum
-from app.enums.proteases import ProteaseEnum, ProteaseOrderingEnum
+from app.enums.proteases import OrderEnum, ProteaseAction
 
 
 class ProteinRequest(BaseModel):
@@ -42,36 +44,45 @@ class ProteinRequest(BaseModel):
 
         return [AminoAcidEnum(aa) for aa in cleaned]
 
+    def sequence_to_str(self) -> str:
+        """Convert list of AminoAcidEnums to str."""
+        return "".join([aa.value for aa in self.sequence])
+
 
 class DigestRequest(BaseModel):
     """Schema for digest configuration in digest job request."""
 
-    proteases: list[ProteaseEnum] = Field(
-        ..., min_length=1, description="List of proteases to use for digestion"
-    )
-    ordering: ProteaseOrderingEnum = Field(
-        ..., description="Ordering strategy for protease application"
-    )
+    proteases: list[ProteaseAction] = Field(..., min_length=1, max_length=3)
 
-    @field_validator("proteases", mode="before")
+    @field_validator("proteases", mode="after")
     @classmethod
-    def validate_proteases(cls, v) -> list[ProteaseEnum]:
-        """Validate that all proteases are valid enum values."""
-        if not isinstance(v, list):
-            raise ValueError("Proteases must be a list")
-        if len(v) < 1:
-            raise ValueError("At least one protease per digest")
-        if len(v) > 3:
-            raise ValueError("No more than 3 proteases per digest")
+    def validate_proteases(cls, v) -> list[ProteaseAction]:
+        """Validates there there are no duplicate proteases and that the order is accurate."""
+        sorted_proteases: list[ProteaseAction] = sorted(v, key=lambda x: int(x.order))
+        proteases_counter: Counter[str, int] = Counter(
+            [each.protease.value for each in sorted_proteases]
+        )
+        if any(count > 1 for count in proteases_counter.values()):
+            duplicate_proteases: list[str] = [
+                protease for protease, count in proteases_counter.items() if count > 1
+            ]
+            raise ValueError(
+                f"Duplicate proteases per digest not allowed: {', '.join(duplicate_proteases)}"
+            )
 
-        unique_proteases = set(v)
-        if len(unique_proteases) != len(v):
-            raise ValueError("Duplicate proteases are not allowed")
+        ordering: str = "".join(sorted([each.order.value for each in sorted_proteases]))
+        if ordering not in OrderEnum.valid_orderings():
+            current_ordering: str = ", ".join(
+                [
+                    f"{each.protease.value}:{each.order.value}"
+                    for each in sorted_proteases
+                ]
+            )
+            raise ValueError(
+                f"Protease must be in a valid ordering. Current Ordering: {current_ordering}"
+            )
 
-        try:
-            return [ProteaseEnum(protease) for protease in v]
-        except ValueError as e:
-            raise ValueError(f"Invalid protease provided: {e}") from None
+        return sorted_proteases
 
 
 class DigestJobRequest(BaseModel):
@@ -92,9 +103,17 @@ class DigestJobRequest(BaseModel):
                     "sequence": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWYVYSQIAEEYEVHSSFLK",
                 },
                 "digest": {
-                    "proteases": ["trypsin", "chymotrypsin"],
-                    "ordering": "ordered",
+                    "proteases": [
+                        {"protease": "trypsin", "order": "1"},
+                        {"protease": "chymotrypsin", "order": "2"},
+                    ]
                 },
             }
         }
     }
+
+
+class DigestJobResponse(BaseModel):
+    """Schema for digest job creation response."""
+
+    digest_id: str = Field(..., description="ID of the created digest job")
