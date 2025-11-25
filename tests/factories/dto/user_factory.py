@@ -1,3 +1,5 @@
+from typing import Any
+
 from faker import Faker
 from polyfactory.factories.pydantic_factory import ModelFactory
 
@@ -10,9 +12,9 @@ class UserCreateFactory(ModelFactory[UserCreate]):
     __model__ = UserCreate
 
     @classmethod
-    def username(cls) -> str:
+    def username(cls) -> Any:
         return faker.user_name().replace(".", "_").replace("@", "_")[:50]
 
     @classmethod
-    def email(cls) -> str:
+    def email(cls) -> Any:
         return faker.email()

@@ -38,6 +38,7 @@ services:
       - DATABASE_URL=mysql+pymysql://qpeptide_user:qpeptide_password@mysql:3306/qpeptide-db
       - DATABASE_ECHO=false
       - BACKEND_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ./app:/app/app:ro
     healthcheck:

@@ -130,4 +130,5 @@ def test_delete_user_by_email_no_user_found(client: TestClient, db_session: Sess
     )
 
     user_retrieved = db_session.query(User).first()
+    assert user_retrieved is not None
     assert user_retrieved.id == user.id

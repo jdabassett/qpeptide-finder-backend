@@ -18,7 +18,9 @@ class Digest(BaseModel):
     __tablename__ = "digests"
 
     status: Mapped[DigestStatusEnum] = mapped_column(
-        SQLEnum(DigestStatusEnum), default=DigestStatusEnum.PROCESSING, nullable=False
+        SQLEnum(DigestStatusEnum, native_enum=False, length=20),
+        default=DigestStatusEnum.PROCESSING,
+        nullable=False,
     )
     user_id: Mapped[str] = mapped_column(
         String(36),
