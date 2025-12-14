@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModelNoTimestamps
 
 if TYPE_CHECKING:
-    from app.models.digest import Digest
+    from app.models import Digest, PeptideCriteria
 
 
 class Peptide(BaseModelNoTimestamps):
@@ -19,7 +19,12 @@ class Peptide(BaseModelNoTimestamps):
         index=True,
     )
     sequence: Mapped[str] = mapped_column(String(500), nullable=False)
-    rank: Mapped[int] = mapped_column(Integer, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     digest: Mapped["Digest"] = relationship(back_populates="peptides")
+
+    criteria: Mapped[list["PeptideCriteria"]] = relationship(
+        back_populates="peptide",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
