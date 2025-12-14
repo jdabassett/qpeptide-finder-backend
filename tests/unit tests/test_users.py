@@ -25,7 +25,6 @@ def test_create_user(client: TestClient, db_session: Session):
     )
 
     # validate
-    # response is accurate
     assert response.status_code == 201
     data = response.json()
     assert data["username"] == user_request.username
@@ -66,7 +65,6 @@ def test_update_user(client: TestClient, db_session: Session):
     assert "created_at" in data
     assert "updated_at" in data
 
-    # record has been updated
     user = db_session.query(User).filter(User.email == user_request.email).first()
     assert user is not None
     assert user.id == user_record.id
