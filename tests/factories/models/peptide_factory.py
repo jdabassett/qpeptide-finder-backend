@@ -1,7 +1,3 @@
-"""
-Factory for creating Peptide test data.
-"""
-
 import random
 
 from factory import LazyAttribute, SubFactory

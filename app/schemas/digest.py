@@ -4,6 +4,7 @@
 # from pydantic import BaseModel, EmailStr, Field, field_validator
 
 # from app.enums import AminoAcidEnum
+# from app.enums.proteases import OrderEnum, ProteaseAction
 
 
 # class ProteinRequest(BaseModel):
