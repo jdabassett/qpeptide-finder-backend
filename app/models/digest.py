@@ -4,14 +4,11 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.enums.digest_statuses import DigestStatusEnum
+from app.enums import DigestStatusEnum, ProteaseEnum
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
-    from app.models.digest_proteases import DigestProtease
-    from app.models.peptides import Peptide
-    from app.models.protein import Protein
-    from app.models.user import User
+    from app.models import Peptide, User
 
 
 class Digest(BaseModel):
@@ -28,21 +25,15 @@ class Digest(BaseModel):
         nullable=False,
         index=True,
     )
-    protein_id: Mapped[str] = mapped_column(
-        String(36),
-        ForeignKey("proteins.id", ondelete="CASCADE"),
+    protease: Mapped[ProteaseEnum] = mapped_column(
+        SQLEnum(ProteaseEnum, native_enum=False, length=50),
+        default=ProteaseEnum.TRYPSIN,
         nullable=False,
-        index=True,
     )
+    protein_name: Mapped[str] = mapped_column(String(200), nullable=True)
+    sequence: Mapped[str] = mapped_column(String(3000), default="", nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="digests")
-    protein: Mapped["Protein"] = relationship(back_populates="digests")
     peptides: Mapped[list["Peptide"]] = relationship(
         back_populates="digest", cascade="all, delete-orphan", passive_deletes=True
-    )
-    proteases: Mapped[list["DigestProtease"]] = relationship(
-        back_populates="digest",
-        cascade="all, delete-orphan",
-        passive_deletes=True,
-        order_by="DigestProtease.order",
     )

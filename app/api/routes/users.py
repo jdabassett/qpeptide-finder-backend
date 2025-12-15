@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.user import User
+from app.models import User
 from app.schemas.user import UserCreate, UserResponse
 
 users_router = APIRouter(prefix="/users", tags=["users"])
