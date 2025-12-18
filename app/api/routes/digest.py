@@ -7,8 +7,8 @@ from app.enums import DigestStatusEnum
 from app.helpers import (
     create_new_record,
     get_user_by_email_or_exception,
-    request_outside_digest_interval,
-    request_within_digest_limit,
+    request_outside_digest_interval_or_exception,
+    request_within_digest_limit_or_exception,
 )
 from app.models import Digest
 from app.schemas.digest import DigestJobRequest, DigestJobResponse
@@ -35,9 +35,9 @@ def create_digest_job(
     """
     user = get_user_by_email_or_exception(job_request.user_email, session)
 
-    request_within_digest_limit(user.id, session)
+    request_within_digest_limit_or_exception(user.id, session)
 
-    request_outside_digest_interval(user.id, session)
+    request_outside_digest_interval_or_exception(user.id, session)
 
     try:
         digest = create_new_record(

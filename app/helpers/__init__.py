@@ -4,14 +4,14 @@ from app.helpers.database import (
     get_user_by_email_or_exception,
 )
 from app.helpers.digest_route import (
-    request_outside_digest_interval,
-    request_within_digest_limit,
+    request_outside_digest_interval_or_exception,
+    request_within_digest_limit_or_exception,
 )
 
 __all__ = [
     "get_user_by_email_or_exception",
     "get_user_by_email",
-    "request_within_digest_limit",
-    "request_outside_digest_interval",
+    "request_within_digest_limit_or_exception",
+    "request_outside_digest_interval_or_exception",
     "create_new_record",
 ]

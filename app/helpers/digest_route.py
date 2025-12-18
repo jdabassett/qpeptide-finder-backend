@@ -9,7 +9,7 @@ from app.core.config import Settings
 from app.models import Digest
 
 
-def request_within_digest_limit(user_id: str, session: Session) -> None:
+def request_within_digest_limit_or_exception(user_id: str, session: Session) -> None:
     """
     Check if user has exceeded the digest job limit.
 
@@ -37,7 +37,9 @@ def request_within_digest_limit(user_id: str, session: Session) -> None:
     return
 
 
-def request_outside_digest_interval(user_id: str, session: Session) -> None:
+def request_outside_digest_interval_or_exception(
+    user_id: str, session: Session
+) -> None:
     """
     Check if user has submitted a digest job too recently.
 
