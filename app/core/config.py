@@ -150,6 +150,10 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
+    # Digest Job limit per User
+    DIGEST_JOB_LIMIT: int = 3
+    DIGEST_JOB_INTERVAL: int = 2
+
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod
     def parse_database_echo(cls, v: str | bool) -> bool:

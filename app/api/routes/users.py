@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.helpers import get_user_by_email, get_user_by_email_or_exception
 from app.models import User
 from app.schemas.user import UserCreate, UserResponse
 
@@ -22,8 +22,7 @@ def create_or_retrieve_user(
     - username: User's name (3-50 characters)
     - email: Valid email address
     """
-    query: Select = select(User).where(User.email == user_request.email)
-    existing_user: User | None = session.scalar(query)
+    existing_user: User | None = get_user_by_email(user_request.email, session)
 
     if existing_user:
         existing_user.username = user_request.username
@@ -68,14 +67,7 @@ def delete_user_by_email(email: str, session: Session = Depends(get_db)):
     - Returns 404 if user not found
     - Returns 400/500 for other errors
     """
-    query: Select = select(User).where(User.email == email)
-    user: User | None = session.scalar(query)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with email {email} not found",
-        )
+    user: User = get_user_by_email_or_exception(email, session)
 
     try:
         session.delete(user)

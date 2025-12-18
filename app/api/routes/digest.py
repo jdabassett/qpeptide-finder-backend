@@ -1,11 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.enums import DigestStatusEnum
-from app.models import Digest, User
+from app.helpers import (
+    create_new_record,
+    get_user_by_email_or_exception,
+    request_outside_digest_interval,
+    request_within_digest_limit,
+)
+from app.models import Digest
 from app.schemas.digest import DigestJobRequest, DigestJobResponse
 
 digest_router = APIRouter(prefix="/digests", tags=["digests"])
@@ -28,34 +33,29 @@ def create_digest_job(
 
     Returns the digest job ID and status.
     """
+    user = get_user_by_email_or_exception(job_request.user_email, session)
+
+    request_within_digest_limit(user.id, session)
+
+    request_outside_digest_interval(user.id, session)
+
     try:
-        query: Select = select(User).where(User.email == job_request.user_email)
-        user: User | None = session.scalar(query)
-
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with email {job_request.user_email} not found. Please create a user first.",
-            )
-
-        digest = Digest(
+        digest = create_new_record(
+            session,
+            Digest,
             status=DigestStatusEnum.PROCESSING,
             user_id=user.id,
             protease=job_request.protease,
             protein_name=job_request.protein_name,
             sequence=job_request.sequence_to_str(),
+            flush=True,
         )
-        session.add(digest)
-        session.flush()
-        session.commit()
-        session.refresh(digest)
 
         # TODO: generate backgroud task here
 
         return DigestJobResponse(
             digest_id=digest.id,
         )
-
     except IntegrityError as e:
         session.rollback()
         raise HTTPException(
