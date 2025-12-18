@@ -8,58 +8,77 @@ from fastapi import HTTPException, status
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
-from app.models import User
-
 # Type variable for SQLAlchemy models
 T = TypeVar("T")
 
 
-def get_user_by_email(email: str, session: Session) -> User | None:
+def get_record(  # noqa: UP047
+    session: Session,
+    model_class: type[T],
+    **kwargs,
+) -> T | None:
     """
-    Get a user by email address, returning None if not found.
-
-    Use this when you need to check if a user exists without raising an exception.
-    Use find_user() when the user must exist (e.g., for validation).
+    Get a single record from a table matching the given criteria.
 
     Args:
-        email: Email address of the user
         session: Database session
+        model_class: The SQLAlchemy model class to query
+        **kwargs: Keyword arguments representing field=value pairs to match.
 
     Returns:
-        User if found, None otherwise
+        The found record if exists, None otherwise
     """
-    user_query: Select = select(User).where(User.email == email)
-    result = session.scalar(user_query)
-    return result if isinstance(result, User) else None
-
-
-def get_user_by_email_or_exception(email: str, session: Session) -> User:
-    """
-    Find a user by email address or raise exception.
-
-    Args:
-        email: Email address of the user
-        session: Database session
-
-    Returns:
-        User: The found user
-
-    Raises:
-        HTTPException: 404 if user not found
-    """
-
-    user: User | None = get_user_by_email(email, session)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with email {email} not found.",
+    if not kwargs:
+        raise ValueError(
+            f"Cannot query {model_class.__name__}: no search criteria provided"
         )
 
-    return user
+    query: Select = select(model_class)
+
+    for key, value in kwargs.items():
+        if not hasattr(model_class, key):
+            raise AttributeError(f"{model_class.__name__} has no attribute '{key}'")
+        column = getattr(model_class, key)
+        query = query.where(column == value)
+
+    result = session.scalar(query)
+    return result if isinstance(result, model_class) else None
 
 
-def create_new_record(  # noqa: UP047
+def get_record_or_exception(  # noqa: UP047
+    session: Session,
+    model_class: type[T],
+    **kwargs,
+) -> T:
+    """
+    Get a single record from a table matching the given criteria, or raise exception.
+
+    Args:
+        session: Database session
+        model_class: The SQLAlchemy model class to query
+        **kwargs: Keyword arguments representing field=value pairs to match.
+
+    Returns:
+        The found record
+
+    Raises:
+        HTTPException: 404 if record not found
+        ValueError: If no search criteria provided
+        AttributeError: If invalid field names provided
+    """
+    record = get_record(session, model_class, **kwargs)
+
+    if not record:
+        criteria = ", ".join(f"{k}={v!r}" for k, v in kwargs.items())
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{model_class.__name__} with {criteria} not found.",
+        )
+
+    return record
+
+
+def create_record(  # noqa: UP047
     session: Session,
     model_class: type[T],
     *,
@@ -99,9 +118,87 @@ def create_new_record(  # noqa: UP047
     if flush:
         session.flush()
 
-    session.commit()
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     if refresh:
         session.refresh(instance)
 
     return instance
+
+
+def update_record(  # noqa: UP047
+    session: Session,
+    record: T,
+    *,
+    refresh: bool = True,
+    **kwargs,
+) -> T:
+    """
+    Update an existing database record with keyword arguments.
+
+    Args:
+        session: Database session to use for the operation
+        record: The existing model instance to update
+        refresh: If True, refresh the instance from DB after commit to
+            ensure all database-generated fields are up-to-date.
+        **kwargs: Keyword arguments representing fields to update.
+            Must match the model's field names.
+
+    Returns:
+        The updated model instance.
+
+    Raises:
+        IntegrityError: If a database constraint violation occurs
+        AttributeError: If invalid field names are provided in kwargs
+        ValueError: If model validation fails
+    """
+    if not kwargs:
+        raise ValueError(
+            f"Cannot update {type(record).__name__} record: no keyword arguments provided"
+        )
+
+    for key, value in kwargs.items():
+        if not hasattr(record, key):
+            raise AttributeError(f"{type(record).__name__} has no attribute '{key}'")
+        setattr(record, key, value)
+
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+    if refresh:
+        session.refresh(record)
+
+    return record
+
+
+def delete_record(  # noqa: UP047
+    session: Session,
+    record: T,
+) -> None:
+    """
+    Delete a database record.
+
+    Args:
+        session: Database session to use for the operation
+        record: The model instance to delete (must be attached to session)
+
+    Returns:
+        None
+
+    Raises:
+        IntegrityError: If a database constraint violation occurs
+    """
+    session.delete(record)
+
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise

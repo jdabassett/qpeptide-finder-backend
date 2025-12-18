@@ -5,12 +5,12 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.enums import DigestStatusEnum
 from app.helpers import (
-    create_new_record,
-    get_user_by_email_or_exception,
+    create_record,
+    get_record_or_exception,
     request_outside_digest_interval_or_exception,
     request_within_digest_limit_or_exception,
 )
-from app.models import Digest
+from app.models import Digest, User
 from app.schemas.digest import DigestJobRequest, DigestJobResponse
 
 digest_router = APIRouter(prefix="/digests", tags=["digests"])
@@ -33,14 +33,14 @@ def create_digest_job(
 
     Returns the digest job ID and status.
     """
-    user = get_user_by_email_or_exception(job_request.user_email, session)
+    user = get_record_or_exception(session, User, email=job_request.user_email)
 
     request_within_digest_limit_or_exception(user.id, session)
 
     request_outside_digest_interval_or_exception(user.id, session)
 
     try:
-        digest: Digest = create_new_record(
+        digest: Digest = create_record(
             session,
             Digest,
             status=DigestStatusEnum.PROCESSING,
@@ -57,19 +57,16 @@ def create_digest_job(
             digest_id=digest.id,
         )
     except IntegrityError as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create digest job due to database constraint violation. Error: {str(e)}",
         ) from e
     except ValueError as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid digest job data: {str(e)}",
         ) from e
     except Exception as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred while creating digest job: {str(e)}",
