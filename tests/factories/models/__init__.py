@@ -1,4 +1,3 @@
-from tests.factories.models.criteria_factory import CriteriaFactory
 from tests.factories.models.digest_factory import DigestFactory
 from tests.factories.models.peptide_criteria_factory import PeptideCriteriaFactory
 from tests.factories.models.peptide_factory import PeptideFactory
@@ -8,6 +7,5 @@ __all__ = [
     "UserFactory",
     "DigestFactory",
     "PeptideFactory",
-    "CriteriaFactory",
     "PeptideCriteriaFactory",
 ]
