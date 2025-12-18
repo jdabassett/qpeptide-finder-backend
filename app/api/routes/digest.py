@@ -40,7 +40,7 @@ def create_digest_job(
     request_outside_digest_interval_or_exception(user.id, session)
 
     try:
-        digest = create_new_record(
+        digest: Digest = create_new_record(
             session,
             Digest,
             status=DigestStatusEnum.PROCESSING,

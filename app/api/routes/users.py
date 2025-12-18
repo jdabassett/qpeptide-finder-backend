@@ -5,7 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.helpers import get_user_by_email, get_user_by_email_or_exception
+from app.helpers import (
+    create_new_record,
+    get_user_by_email,
+    get_user_by_email_or_exception,
+)
 from app.models import User
 from app.schemas.user import UserCreate, UserResponse
 
@@ -32,10 +36,14 @@ def create_or_retrieve_user(
         return existing_user
 
     try:
-        new_user: User = User(username=user_request.username, email=user_request.email)
-        session.add(new_user)
-        session.commit()
-        session.refresh(new_user)
+        # TODO: write and use update_record helper function here
+        new_user: User = create_new_record(
+            session,
+            User,
+            username=user_request.username,
+            email=user_request.email,
+            flush=True,
+        )
         return new_user
     except IntegrityError as e:
         session.rollback()
