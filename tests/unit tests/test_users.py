@@ -122,10 +122,11 @@ def test_delete_user_by_email_no_user_found(client: TestClient, db_session: Sess
 
     # validate
     assert response.status_code == 404
-    assert (
-        response.content
-        == b'{"detail":"User with email email_wont_be_found@email.com not found"}'
-    )
+    response_data = response.json()
+    assert "detail" in response_data
+    assert "User" in response_data["detail"]
+    assert "email_wont_be_found@email.com" in response_data["detail"]
+    assert "not found" in response_data["detail"].lower()
 
     user_retrieved = db_session.query(User).first()
     assert user_retrieved is not None

@@ -2,6 +2,7 @@
 Pytest configuration and shared fixtures.
 """
 
+import uuid
 from collections.abc import Generator
 
 import pytest
@@ -12,13 +13,93 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import get_db
+from app.enums import CriteriaEnum
 from app.main import app
 
 # Import all models to ensure they're registered with BaseModel.metadata
-from app.models import Digest, Peptide, User  # noqa: F401
+from app.models import Criteria, Digest, Peptide, User  # noqa: F401
 from app.models.base import Base
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
+
+# Criteria data from migration - must match alembic/versions/1d3884dbeb40_create_tables.py
+CRITERIA_DATA = [
+    {
+        "code": "unique_sequence",
+        "goal": "The peptide must unique within the target protein.",
+        "rationale": "Ensures that the measured signal reflects only one site from the protein of interest.",
+    },
+    {
+        "code": "no_missed_cleavage",
+        "goal": "Ensure the peptide is completely generated during digestion.",
+        "rationale": "Missed cleavage sites (e.g., Lys-Pro, Arg-Pro) produce heterogeneous peptide populations, reducing reproducibility and quantitative accuracy.",
+    },
+    {
+        "code": "avoid_flanking_cut_sites",
+        "goal": "Do not choose peptides immediately adjacent to cleavage motifs (e.g., KP, RP, PP).",
+        "rationale": "Proximity to other cut sites can reduce digestion efficiency, leading to missed cleavages or semi-tryptic peptides.",
+    },
+    {
+        "code": "flanking_amino_acids",
+        "goal": "Prioritizes peptides with at least 6 residues on both sides of the cleavage site in the intact protein.",
+        "rationale": "Improves trypsin accessibility and digestion efficiency, producing more consistent peptide generation.",
+    },
+    {
+        "code": "peptide_length",
+        "goal": "7–30 amino acids.",
+        "rationale": "Peptides shorter than 7 residues are often not unique and fragment poorly. Peptides longer than 30 residues ionize inefficiently and fragment unpredictably. This range provides optimal MS detectability and sequence coverage.",
+    },
+    {
+        "code": "no_n-terminal_glutamine",
+        "goal": "Exclude peptides with N-terminal glutamine.",
+        "rationale": "N-terminal glutamine cyclizes to pyroglutamate or converts to glutamate post-digestion, producing multiple forms that complicate quantification.",
+    },
+    {
+        "code": "no_asp_pro_motif",
+        "goal": "Exclude Asp–Pro sequences.",
+        "rationale": "Aspartic acid followed by proline causes preferential gas-phase cleavage, producing non-informative fragmentation spectra and reducing identification confidence.",
+    },
+    {
+        "code": "no_asn_gly_motif",
+        "goal": "Exclude Asparagine–Glycine sequences.",
+        "rationale": "N–G motifs deamidate rapidly post-digestion, producing mixed modified/unmodified peptides that complicate quantitation.",
+    },
+    {
+        "code": "avoid_methionine",
+        "goal": "Avoid methionine-containing peptides.",
+        "rationale": "Methionine oxidizes readily during sample handling, generating multiple peptide species with different masses and retention times, reducing quantitative precision.",
+    },
+    {
+        "code": "avoid_cysteine",
+        "goal": "Minimize peptides containing cysteine.",
+        "rationale": "Cysteine requires alkylation; incomplete or over-alkylation creates heterogeneous populations, reducing quantitative reliability.",
+    },
+    {
+        "code": "peptide_pi",
+        "goal": "Select peptides with pI below ~4.5.",
+        "rationale": "Acidic peptides ionize more efficiently in positive-mode electrospray and elute reproducibly in LC-MS, improving detectability.",
+    },
+    {
+        "code": "avoid_ptm_prone_residues",
+        "goal": "Avoid peptides likely to carry modifications.",
+        "rationale": "PTMs create multiple peptide forms, reducing quantitative precision. Only necessary if the protein is known or suspected to be modified.",
+    },
+    {
+        "code": "avoid_highly_hydrophobic_peptides",
+        "goal": "Exclude transmembrane or very hydrophobic regions.",
+        "rationale": "Hydrophobic peptides adhere to columns, elute poorly, and ionize inefficiently, lowering MS signal.",
+    },
+    {
+        "code": "avoid_long_homopolymeric_stretches",
+        "goal": "Avoid homopolymeric sequences.",
+        "rationale": "Homopolymeric sequences produce weak, uninformative fragmentation spectra, reducing confidence in identification.",
+    },
+    {
+        "code": "prefer_typical_charge_states",
+        "goal": "Favor peptides that form 2+ or 3+ ions.",
+        "rationale": "Very basic peptides (4+ or higher) or neutral peptides (1+) fragment less predictably, decreasing identification reliability.",
+    },
+]
 
 
 @pytest.fixture(scope="session")
@@ -57,6 +138,18 @@ def db_session(test_engine) -> Generator[Session]:
 
     for factory_class in SQLAlchemyModelFactory.__subclasses__():
         factory_class._meta.sqlalchemy_session = session
+
+    if session.query(Criteria).count() == 0:
+        for idx, item in enumerate(CRITERIA_DATA, start=1):
+            criteria = Criteria(
+                id=str(uuid.uuid4()),
+                code=CriteriaEnum(item["code"]),
+                goal=item["goal"],
+                rationale=item["rationale"],
+                rank=idx,
+            )
+            session.add(criteria)
+        session.commit()
 
     yield session
 
