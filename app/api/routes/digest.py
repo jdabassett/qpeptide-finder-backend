@@ -51,6 +51,10 @@ def create_digest_job(
             flush=True,
         )
 
+        # protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
+
+        # process_digest_job(protein)
+
         # TODO: generate backgroud task here
 
         return DigestJobResponse(

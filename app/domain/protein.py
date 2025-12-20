@@ -1,5 +1,5 @@
 # classes for protein digest job processing
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from app.domain import PeptideDomain
 from app.enums import ProteaseEnum
@@ -23,13 +23,6 @@ class ProteinDomain(BaseModel):
             sequence=digest.sequence,
             protease=digest.protease,
         )
-
-    @field_validator("sequence")
-    @classmethod
-    def validate_sequence(cls, v: str) -> str:
-        if not v:
-            raise ValueError("Protein sequence cannot be empty")
-        return v
 
     def get_sequence_length(self) -> int:
         return len(self.sequence)
