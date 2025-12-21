@@ -12,13 +12,13 @@ class DigestJobRequest(BaseModel):
     protein_name: str = Field(
         ..., min_length=1, max_length=255, description="Protein name"
     )
-    sequence: list[AminoAcidEnum] = Field(
+    sequence: str = Field(
         ..., min_length=1, max_length=3000, description="Protein sequence"
     )
 
     @field_validator("sequence", mode="before")
     @classmethod
-    def validate_sequence(cls, v) -> list[AminoAcidEnum]:
+    def validate_sequence(cls, v) -> str:
         """Validate that sequence contains only valid amino acid characters."""
         if not isinstance(v, str):
             raise TypeError("Sequence must be a string")
@@ -36,11 +36,7 @@ class DigestJobRequest(BaseModel):
                 f"Invalid amino acid(s) in sequence: {', '.join(sorted(set(invalid_chars)))}."
             )
 
-        return [AminoAcidEnum(aa) for aa in cleaned]
-
-    def sequence_to_str(self) -> str:
-        """Convert list of AminoAcidEnums to str."""
-        return "".join([aa.value for aa in self.sequence])
+        return cleaned
 
     model_config = {
         "json_schema_extra": {

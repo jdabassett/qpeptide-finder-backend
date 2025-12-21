@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
     create_record,
@@ -12,6 +13,7 @@ from app.helpers import (
 )
 from app.models import Digest, User
 from app.schemas.digest import DigestJobRequest, DigestJobResponse
+from app.tasks import process_digest_job
 
 digest_router = APIRouter(prefix="/digests", tags=["digests"])
 
@@ -47,15 +49,13 @@ def create_digest_job(
             user_id=user.id,
             protease=job_request.protease,
             protein_name=job_request.protein_name,
-            sequence=job_request.sequence_to_str(),
+            sequence=job_request.sequence,
             flush=True,
         )
 
-        # protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
+        protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
 
-        # process_digest_job(protein)
-
-        # TODO: generate backgroud task here
+        BackgroundTasks.add_task(process_digest_job, protein_domain)
 
         return DigestJobResponse(
             digest_id=digest.id,

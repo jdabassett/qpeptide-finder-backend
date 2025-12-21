@@ -19,6 +19,60 @@ class ProteaseEnum(str, Enum):
     # SUBTILISIN = "subtilisin"
     # PROLINE_ENDOPEPTIDASE = "proline_endopeptidase"
 
+    @property
+    def cleavage_aas(self) -> set[str]:
+        """Returns set of amino acid strings that a given protease would cleave at."""
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                return {AminoAcidEnum.LYSINE.value, AminoAcidEnum.ARGININE.value}
+            case _:
+                raise NotImplementedError(
+                    f"Cleave aa set for {self.value} are not yet implemented."
+                )
+
+    @property
+    def inhibitor_aas(self) -> set[str]:
+        """Returns set of amino acid strings that would inhibit protease cleavage."""
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                return {AminoAcidEnum.PROLINE.value}
+            case _:
+                raise NotImplementedError(
+                    f"Inhibit aa set for {self.value} are not yet implemented."
+                )
+
+    def would_cut_at(self, sequence: str, position: int) -> bool:
+        """
+        Determine if this protease would cut after the given position.
+
+        Returns:
+            True if the protease would cut after this position, False otherwise
+        """
+        if position < 0 or position >= len(sequence):
+            raise IndexError(
+                f"Position {position} is out of bounds for sequence of length {len(sequence)}"
+            )
+
+        current_aa = sequence[position]
+
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                if current_aa not in self.cleavage_aas:
+                    return False
+
+                next_aa = (
+                    sequence[position + 1] if position + 1 < len(sequence) else None
+                )
+                if next_aa is None:
+                    return True
+
+                return next_aa not in self.inhibitor_aas
+
+            case _:
+                raise NotImplementedError(
+                    f"Cleavage rules for {self.value} are not yet implemented"
+                )
+
 
 class DigestStatusEnum(str, Enum):
     """All supported digestion states"""
