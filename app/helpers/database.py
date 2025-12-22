@@ -92,6 +92,7 @@ def create_record(  # noqa: UP047
     *,
     flush: bool = False,
     refresh: bool = True,
+    commit: bool = True,
     **kwargs,
 ) -> T:
     """
@@ -103,6 +104,7 @@ def create_record(  # noqa: UP047
         flush: If True, flush to DB before commit.
         refresh: If True, refresh the instance from DB after commit to
             ensure all database-generated fields
+        commit: If True, commit the transaction. If False, only add to session
         **kwargs: Keyword arguments to pass to the model constructor.
             Must match the model's field names.
 
@@ -126,11 +128,12 @@ def create_record(  # noqa: UP047
     if flush:
         session.flush()
 
-    try:
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
+    if commit:
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
 
     if refresh:
         session.refresh(instance)
@@ -235,8 +238,6 @@ def save_peptides_with_criteria(
 
     criteria_map = _get_criteria_map(session, peptides)
 
-    created_peptides: list[Peptide] = []
-
     try:
         for peptide_domain in peptides:
             peptide = create_record(
@@ -247,8 +248,8 @@ def save_peptides_with_criteria(
                 position=peptide_domain.position,
                 flush=True,
                 refresh=True,
+                commit=False,
             )
-            created_peptides.append(peptide)
 
             for criteria_enum in peptide_domain.criteria:
                 criteria_record = criteria_map.get(criteria_enum)
@@ -263,15 +264,15 @@ def save_peptides_with_criteria(
                     PeptideCriteria,
                     peptide_id=peptide.id,
                     criteria_id=criteria_record.id,
-                    flush=True,
+                    flush=False,
                     refresh=False,
+                    commit=False,
                 )
 
         session.commit()
 
         logger.info(
-            f"Successfully saved {len(created_peptides)} peptides with criteria "
-            f"for digest_id: {digest_id}"
+            f"Successfully saved {len(peptides)} peptides with criteria for digest_id: {digest_id}"
         )
 
         return
