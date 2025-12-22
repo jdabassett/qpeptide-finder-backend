@@ -25,7 +25,7 @@ digest_router = APIRouter(prefix="/digests", tags=["digests"])
 )
 def create_digest_job(
     job_request: DigestJobRequest,
-    background_task: BackgroundTasks,
+    background_tasks: BackgroundTasks,
     session: Session = Depends(get_db),
 ):
     """
@@ -53,7 +53,7 @@ def create_digest_job(
 
         protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
 
-        background_task.add_task(process_digest_job, protein_domain)
+        background_tasks.add_task(process_digest_job, protein_domain)
 
         return DigestJobResponse(
             digest_id=digest.id,

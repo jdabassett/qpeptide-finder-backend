@@ -216,7 +216,7 @@ def save_peptides_with_criteria(
     session: Session,
     digest_id: str,
     peptides: Sequence[PeptideDomain],
-):
+) -> None:
     """
     Save peptides and their criteria associations to the database.
 
@@ -231,7 +231,7 @@ def save_peptides_with_criteria(
     """
     if not peptides:
         logger.info(f"No peptides to save for digest_id: {digest_id}")
-        return []
+        return
 
     criteria_map = _get_criteria_map(session, peptides)
 
@@ -274,7 +274,7 @@ def save_peptides_with_criteria(
             f"for digest_id: {digest_id}"
         )
 
-        return created_peptides
+        return
 
     except Exception:
         session.rollback()
