@@ -29,11 +29,7 @@ def create_digest_job(
     """
     Create a new digest job.
 
-    - user_email: Email address of the user
-    - protein: Protein information (name, sequence)
-    - digest: Digest configuration (proteases)
-
-    Returns the digest job ID and status.
+    Returns the digest job ID.
     """
     user = get_record_or_exception(session, User, email=job_request.user_email)
 
