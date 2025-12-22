@@ -154,6 +154,10 @@ class Settings(BaseSettings):
     DIGEST_JOB_LIMIT: int = 3
     DIGEST_JOB_INTERVAL: int = 2
 
+    # Peptide Filter Settings
+    MIN_PEPTIDE_LENGTH: int = 7
+    MAX_PEPTIDE_LENGTH: int = 30
+
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod
     def parse_database_echo(cls, v: str | bool) -> bool:

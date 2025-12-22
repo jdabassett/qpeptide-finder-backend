@@ -9,10 +9,20 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
+from app.helpers import save_peptides_with_criteria
 from app.helpers.database import get_record, update_record
 from app.models import Digest
+from app.services import CriteriaEvaluator, PeptideLengthFilter
 
 logger = logging.getLogger(__name__)
+
+
+def create_default_criteria_evaluator() -> CriteriaEvaluator:
+    """Create a default criteria evaluator with standard filters."""
+    filters = [
+        PeptideLengthFilter(),
+    ]
+    return CriteriaEvaluator(filters)
 
 
 def process_digest_job(protein_domain: ProteinDomain) -> None:
@@ -42,6 +52,21 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
             return
 
         protein_domain.digest_sequence()
+
+        logger.info(f"Digested protein for digest_id: {protein_domain.digest_id}")
+
+        evaluator = create_default_criteria_evaluator()
+        evaluator.evaluate_peptides(protein_domain)
+
+        logger.info(f"Filtered all peptides for digest_id: {protein_domain.digest_id}")
+
+        save_peptides_with_criteria(
+            session=session,
+            digest_id=protein_domain.digest_id,
+            peptides=protein_domain.peptides,
+        )
+
+        logger.info(f"Saved all peptides for digest_id: {protein_domain.digest_id}")
 
         update_record(
             session,
