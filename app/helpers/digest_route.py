@@ -1,8 +1,7 @@
 # helper functions for the digest route
-import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -50,22 +49,19 @@ def request_outside_digest_interval_or_exception(
     Raises:
         HTTPException: 429 if user submitted a digest job within the interval
     """
+    time_threshold = func.date_sub(
+        func.now(), text(f"INTERVAL {settings.DIGEST_JOB_INTERVAL} MINUTE")
+    )
+
     latest_digest = session.scalar(
         select(Digest)
         .where(Digest.user_id == user_id)
+        .where(Digest.created_at >= time_threshold)
         .order_by(desc(Digest.created_at))
         .limit(1)
     )
 
-    # If user has no previous digests, they can submit
-    if not latest_digest:
-        return
-
-    time_threshold = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-        minutes=settings.DIGEST_JOB_INTERVAL
-    )
-
-    if latest_digest.created_at >= time_threshold:
+    if latest_digest:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
