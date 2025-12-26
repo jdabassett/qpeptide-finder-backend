@@ -12,7 +12,15 @@ from app.enums import DigestStatusEnum
 from app.helpers import save_peptides_with_criteria
 from app.helpers.database import get_record, update_record
 from app.models import Digest
-from app.services import CriteriaEvaluator, PeptideLengthFilter
+from app.services import (
+    AvoidCysteineFilter,
+    AvoidMethionineFilter,
+    CriteriaEvaluator,
+    NoAsparagineGlycineMotifFilter,
+    NoAsparticProlineMotifFilter,
+    PeptideLengthFilter,
+    UniqueSequenceFilter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +29,11 @@ def create_default_criteria_evaluator() -> CriteriaEvaluator:
     """Create a default criteria evaluator with standard filters."""
     filters = [
         PeptideLengthFilter(),
+        AvoidMethionineFilter(),
+        AvoidCysteineFilter(),
+        NoAsparagineGlycineMotifFilter(),
+        NoAsparticProlineMotifFilter(),
+        UniqueSequenceFilter(),
     ]
     return CriteriaEvaluator(filters)
 

@@ -70,7 +70,7 @@ CRITERIA_DATA = [
     },
     {
         "code": "avoid_flanking_cut_sites",
-        "goal": "Do not choose peptides immediately adjacent to cleavage motifs (e.g., KP, RP, PP).",
+        "goal": "Do not choose peptides immediately adjacent to cleavage motifs (e.g., K, R, KP, RP).",
         "rationale": "Proximity to other cut sites can reduce digestion efficiency, leading to missed cleavages or semi-tryptic peptides.",
     },
     {

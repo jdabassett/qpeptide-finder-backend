@@ -297,8 +297,6 @@ def _get_criteria_map(
     """
     criteria_enums = set()
     for peptide in peptides:
-        # TODO: remove it problem is fixed
-        # peptide_criteria = [ce.value for ce in peptide.criteria]
         criteria_enums.update(peptide.criteria)
 
     if not criteria_enums:

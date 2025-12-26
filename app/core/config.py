@@ -157,6 +157,7 @@ class Settings(BaseSettings):
     # Peptide Filter Settings
     MIN_PEPTIDE_LENGTH: int = 7
     MAX_PEPTIDE_LENGTH: int = 30
+    NUMBER_FLANKING_AMINO_ACIDS: int = 6
 
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod

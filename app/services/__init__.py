@@ -1,7 +1,19 @@
 from app.services.criteria_evaluator import CriteriaEvaluator
-from app.services.filters import PeptideLengthFilter
+from app.services.filters import (
+    AvoidCysteineFilter,
+    AvoidMethionineFilter,
+    NoAsparagineGlycineMotifFilter,
+    NoAsparticProlineMotifFilter,
+    PeptideLengthFilter,
+    UniqueSequenceFilter,
+)
 
 __all__ = [
     "CriteriaEvaluator",
     "PeptideLengthFilter",
+    "AvoidMethionineFilter",
+    "AvoidCysteineFilter",
+    "NoAsparagineGlycineMotifFilter",
+    "NoAsparticProlineMotifFilter",
+    "UniqueSequenceFilter",
 ]
