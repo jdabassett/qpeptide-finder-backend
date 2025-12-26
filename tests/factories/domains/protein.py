@@ -44,8 +44,18 @@ class ProteinDomainFactory(ModelFactory[ProteinDomain]):
 
     @classmethod
     def cut_sites(cls) -> Any:
-        """Generate empty cut_sites list by default."""
-        return []
+        """Generate empty cut_sites set by default."""
+        return set()
+
+    @classmethod
+    def missed_cut_sites(cls) -> Any:
+        """Generate empty missed_cut_sites set by default."""
+        return set()
+
+    @classmethod
+    def all_cut_sites(cls) -> Any:
+        """Generate empty missed_cut_sites set by default."""
+        return set()
 
     @classmethod
     def build(cls, with_peptides: bool = False, **kwargs: Any) -> ProteinDomain:

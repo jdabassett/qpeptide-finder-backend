@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from app.domain import PeptideDomain
 from app.enums import ProteaseEnum
+from app.enums.enums import CleavageStatusEnum
 from app.models import Digest
 
 
@@ -14,7 +15,9 @@ class ProteinDomain(BaseModel):
     protease: ProteaseEnum
 
     peptides: list["PeptideDomain"] = Field(default_factory=list)
-    cut_sites: list[int] = Field(default_factory=list)
+    cut_sites: set[int] = Field(default_factory=set)
+    missed_cut_sites: set[int] = Field(default_factory=set)
+    all_cut_sites: set[int] = Field(default_factory=set)
 
     @classmethod
     def from_digest(cls, digest: "Digest") -> "ProteinDomain":
@@ -33,10 +36,14 @@ class ProteinDomain(BaseModel):
         Digest the protein sequence using the configured protease.
         """
         self.peptides = []
-        self.cut_sites = []
+        self.cut_sites = set()
+        self.missed_cut_sites = set()
         for i in range(len(self.sequence)):
-            if self.protease.would_cut_at(self.sequence, i):
-                self.cut_sites.append(i + 1)
+            status: CleavageStatusEnum = self.protease.site_status(self.sequence, i)
+            if status == CleavageStatusEnum.CLEAVAGE:
+                self.cut_sites.add(i + 1)
+            elif status == CleavageStatusEnum.MISSED:
+                self.missed_cut_sites.add(i + 1)
 
         if not self.cut_sites:
             self.peptides.append(
@@ -48,7 +55,7 @@ class ProteinDomain(BaseModel):
             return
 
         start = 0
-        for cut_site in self.cut_sites:
+        for cut_site in sorted(self.cut_sites):
             peptide_seq = self.sequence[start:cut_site]
             if peptide_seq:
                 self.peptides.append(
@@ -68,3 +75,5 @@ class ProteinDomain(BaseModel):
                         position=start + 1,
                     )
                 )
+
+        self.all_cut_sites = self.cut_sites | self.missed_cut_sites

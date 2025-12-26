@@ -26,4 +26,4 @@ def test_digest_sequence_successful():
     assert protein_domain.peptides[1].position == 3
     assert protein_domain.peptides[2].sequence == "QAA"
     assert protein_domain.peptides[2].position == 11
-    assert protein_domain.cut_sites == [2, 10]
+    assert sorted(protein_domain.cut_sites) == [2, 10]

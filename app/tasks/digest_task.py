@@ -14,6 +14,7 @@ from app.helpers.database import get_record, update_record
 from app.models import Digest
 from app.services import (
     AvoidCysteineFilter,
+    AvoidFlankingCutSitesFilter,
     AvoidMethionineFilter,
     CriteriaEvaluator,
     NoAsparagineGlycineMotifFilter,
@@ -34,6 +35,7 @@ def create_default_criteria_evaluator() -> CriteriaEvaluator:
         NoAsparagineGlycineMotifFilter(),
         NoAsparticProlineMotifFilter(),
         UniqueSequenceFilter(),
+        AvoidFlankingCutSitesFilter(),
     ]
     return CriteriaEvaluator(filters)
 

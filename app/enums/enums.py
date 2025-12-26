@@ -2,6 +2,14 @@ from enum import Enum
 from functools import lru_cache
 
 
+class CleavageStatusEnum(str, Enum):
+    """Support site cleavage status."""
+
+    NEUTRAL = "neutral"
+    MISSED = "missed"
+    CLEAVAGE = "cleavage"
+
+
 class ProteaseEnum(str, Enum):
     """Supported proteases."""
 
@@ -41,12 +49,9 @@ class ProteaseEnum(str, Enum):
                     f"Inhibit aa set for {self.value} are not yet implemented."
                 )
 
-    def would_cut_at(self, sequence: str, position: int) -> bool:
+    def site_status(self, sequence: str, position: int) -> CleavageStatusEnum:
         """
         Determine if this protease would cut after the given position.
-
-        Returns:
-            True if the protease would cut after this position, False otherwise
         """
         if position < 0 or position >= len(sequence):
             raise IndexError(
@@ -58,15 +63,15 @@ class ProteaseEnum(str, Enum):
         match self:
             case ProteaseEnum.TRYPSIN:
                 if current_aa not in self.cleavage_aas:
-                    return False
+                    return CleavageStatusEnum.NEUTRAL
 
                 next_aa = (
                     sequence[position + 1] if position + 1 < len(sequence) else None
                 )
-                if next_aa is None:
-                    return True
+                if next_aa in self.inhibitor_aas:
+                    return CleavageStatusEnum.MISSED
 
-                return next_aa not in self.inhibitor_aas
+                return CleavageStatusEnum.CLEAVAGE
 
             case _:
                 raise NotImplementedError(

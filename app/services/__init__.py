@@ -1,6 +1,7 @@
 from app.services.criteria_evaluator import CriteriaEvaluator
 from app.services.filters import (
     AvoidCysteineFilter,
+    AvoidFlankingCutSitesFilter,
     AvoidMethionineFilter,
     NoAsparagineGlycineMotifFilter,
     NoAsparticProlineMotifFilter,
@@ -16,4 +17,5 @@ __all__ = [
     "NoAsparagineGlycineMotifFilter",
     "NoAsparticProlineMotifFilter",
     "UniqueSequenceFilter",
+    "AvoidFlankingCutSitesFilter",
 ]

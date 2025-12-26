@@ -1,4 +1,5 @@
 from app.services.filters.avoid_cysteine import AvoidCysteineFilter
+from app.services.filters.avoid_flanking_cut_sites import AvoidFlankingCutSitesFilter
 from app.services.filters.avoid_methionine import AvoidMethionineFilter
 from app.services.filters.no_asn_gly_motif import NoAsparagineGlycineMotifFilter
 from app.services.filters.no_asp_pro_motif import NoAsparticProlineMotifFilter
@@ -12,4 +13,5 @@ __all__ = [
     "NoAsparagineGlycineMotifFilter",
     "NoAsparticProlineMotifFilter",
     "UniqueSequenceFilter",
+    "AvoidFlankingCutSitesFilter",
 ]
