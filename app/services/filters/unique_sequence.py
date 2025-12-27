@@ -20,4 +20,13 @@ class UniqueSequenceFilter(BaseCriteriaFilter):
         protein: ProteinDomain,
     ) -> bool:
         """Check if peptide is unique."""
-        return protein.sequence.count(peptide.sequence) == 1
+        count = 0
+        peptide_len = peptide.length
+
+        for i in range(0, protein.length - peptide_len + 1):
+            if count > 1:
+                break
+            if protein.sequence[i : i + peptide_len] == peptide.sequence:
+                count += 1
+
+        return count == 1

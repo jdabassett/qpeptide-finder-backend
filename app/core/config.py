@@ -158,6 +158,8 @@ class Settings(BaseSettings):
     MIN_PEPTIDE_LENGTH: int = 7
     MAX_PEPTIDE_LENGTH: int = 30
     NUMBER_FLANKING_AMINO_ACIDS: int = 6
+    LOW_PI_RANGE: float = 4.0
+    HIGH_PI_RANGE: float = 9.0
 
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod

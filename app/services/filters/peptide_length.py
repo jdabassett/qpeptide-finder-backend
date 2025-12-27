@@ -2,7 +2,7 @@
 Peptide length criteria filter.
 """
 
-from app.core.config import settings
+from app.core import settings
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter

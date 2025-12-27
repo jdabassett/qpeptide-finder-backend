@@ -17,10 +17,10 @@ class PeptideDomainFactory(ModelFactory[PeptideDomain]):
 
     @classmethod
     def sequence(cls) -> Any:
-        """Generate a random peptide sequence."""
-        amino_acids = [aa.value for aa in AminoAcidEnum]
-        length = random.randint(5, 30)
-        return "".join(random.choice(amino_acids) for _ in range(length))
+        """Generate a random peptide sequence as list of AminoAcidEnum."""
+        amino_acids = list(AminoAcidEnum)
+        length = random.randint(7, 30)
+        return [random.choice(amino_acids) for _ in range(length)]
 
     @classmethod
     def position(cls) -> Any:

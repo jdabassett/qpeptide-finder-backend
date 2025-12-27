@@ -4,7 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import desc, func, select, text
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core import settings
 from app.models import Digest
 
 

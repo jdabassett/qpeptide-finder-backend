@@ -20,6 +20,7 @@ from app.services import (
     NoAsparagineGlycineMotifFilter,
     NoAsparticProlineMotifFilter,
     PeptideLengthFilter,
+    PeptidePIFilter,
     UniqueSequenceFilter,
 )
 
@@ -36,6 +37,7 @@ def create_default_criteria_evaluator() -> CriteriaEvaluator:
         NoAsparticProlineMotifFilter(),
         UniqueSequenceFilter(),
         AvoidFlankingCutSitesFilter(),
+        PeptidePIFilter(),
     ]
     return CriteriaEvaluator(filters)
 

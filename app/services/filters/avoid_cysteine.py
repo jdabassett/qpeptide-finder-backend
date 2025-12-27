@@ -3,7 +3,7 @@ Avoid cysteine criteria filter.
 """
 
 from app.domain import PeptideDomain, ProteinDomain
-from app.enums import CriteriaEnum
+from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
@@ -20,4 +20,4 @@ class AvoidCysteineFilter(BaseCriteriaFilter):
         protein: ProteinDomain,
     ) -> bool:
         """Check if peptide contains cysteine."""
-        return "C" in peptide.sequence
+        return AminoAcidEnum.CYSTEINE in peptide.sequence

@@ -6,6 +6,7 @@ from app.services.filters import (
     NoAsparagineGlycineMotifFilter,
     NoAsparticProlineMotifFilter,
     PeptideLengthFilter,
+    PeptidePIFilter,
     UniqueSequenceFilter,
 )
 
@@ -18,4 +19,5 @@ __all__ = [
     "NoAsparticProlineMotifFilter",
     "UniqueSequenceFilter",
     "AvoidFlankingCutSitesFilter",
+    "PeptidePIFilter",
 ]

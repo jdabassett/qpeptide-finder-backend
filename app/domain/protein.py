@@ -2,7 +2,7 @@
 from pydantic import BaseModel, Field
 
 from app.domain import PeptideDomain
-from app.enums import ProteaseEnum
+from app.enums import AminoAcidEnum, ProteaseEnum
 from app.enums.enums import CleavageStatusEnum
 from app.models import Digest
 
@@ -11,25 +11,30 @@ class ProteinDomain(BaseModel):
     """Data transfer object for protein during digest processing."""
 
     digest_id: str
-    sequence: str
     protease: ProteaseEnum
-
+    sequence: list[AminoAcidEnum] = Field(default_factory=list)
     peptides: list["PeptideDomain"] = Field(default_factory=list)
     cut_sites: set[int] = Field(default_factory=set)
     missed_cut_sites: set[int] = Field(default_factory=set)
     all_cut_sites: set[int] = Field(default_factory=set)
+
+    @property
+    def length(self) -> int:
+        return len(self.sequence)
+
+    @property
+    def sequence_as_str(self) -> str:
+        """Convert protein sequence into a string."""
+        return "".join([aa.value for aa in self.sequence])
 
     @classmethod
     def from_digest(cls, digest: "Digest") -> "ProteinDomain":
         """Create ProteinDomain from a Digest database record."""
         return cls(
             digest_id=digest.id,
-            sequence=digest.sequence,
+            sequence=AminoAcidEnum.to_amino_acids(digest.sequence),
             protease=digest.protease,
         )
-
-    def get_sequence_length(self) -> int:
-        return len(self.sequence)
 
     def digest_sequence(self) -> None:
         """
@@ -38,7 +43,7 @@ class ProteinDomain(BaseModel):
         self.peptides = []
         self.cut_sites = set()
         self.missed_cut_sites = set()
-        for i in range(len(self.sequence)):
+        for i in range(self.length):
             status: CleavageStatusEnum = self.protease.site_status(self.sequence, i)
             if status == CleavageStatusEnum.CLEAVAGE:
                 self.cut_sites.add(i + 1)
@@ -56,22 +61,22 @@ class ProteinDomain(BaseModel):
 
         start = 0
         for cut_site in sorted(self.cut_sites):
-            peptide_seq = self.sequence[start:cut_site]
-            if peptide_seq:
+            peptide = self.sequence[start:cut_site]
+            if peptide:
                 self.peptides.append(
                     PeptideDomain(
-                        sequence=peptide_seq,
+                        sequence=peptide,
                         position=start + 1,
                     )
                 )
             start = cut_site
 
-        if start < len(self.sequence):
-            peptide_seq = self.sequence[start:]
-            if peptide_seq:
+        if start < self.length:
+            peptide = self.sequence[start:]
+            if peptide:
                 self.peptides.append(
                     PeptideDomain(
-                        sequence=peptide_seq,
+                        sequence=peptide,
                         position=start + 1,
                     )
                 )

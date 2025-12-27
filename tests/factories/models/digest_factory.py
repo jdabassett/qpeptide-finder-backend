@@ -6,7 +6,7 @@ from factory import SubFactory
 from factory.alchemy import SQLAlchemyModelFactory
 from factory.faker import Faker
 
-from app.enums import DigestStatusEnum, ProteaseEnum
+from app.enums import AminoAcidEnum, DigestStatusEnum, ProteaseEnum
 from app.models.digest import Digest
 from tests.factories.models.user_factory import UserFactory
 
@@ -24,6 +24,6 @@ class DigestFactory(SQLAlchemyModelFactory):
     sequence = Faker(
         "text",
         max_nb_chars=200,
-        ext_word_list="ACDEFGHIKLMNPQRSTVWY",
+        ext_word_list="".join([aa.value for aa in AminoAcidEnum]),
     )
     user = SubFactory(UserFactory)

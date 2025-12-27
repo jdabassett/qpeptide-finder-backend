@@ -3,7 +3,7 @@ Avoid methionine criteria filter.
 """
 
 from app.domain import PeptideDomain, ProteinDomain
-from app.enums import CriteriaEnum
+from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
@@ -20,4 +20,4 @@ class AvoidMethionineFilter(BaseCriteriaFilter):
         protein: ProteinDomain,
     ) -> bool:
         """Check if peptide contains methionine."""
-        return "M" in peptide.sequence
+        return AminoAcidEnum.METHIONINE in peptide.sequence

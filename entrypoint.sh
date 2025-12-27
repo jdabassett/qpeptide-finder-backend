@@ -18,7 +18,7 @@ wait_for_mysql() {
             if python3 << 'PYTHON_SCRIPT'
 import os
 import sys
-from app.core.config import settings
+from app.core import settings
 from sqlalchemy import create_engine, text
 
 try:
@@ -133,7 +133,7 @@ verify_connection() {
     python3 << 'PYTHON_SCRIPT'
 import os
 import sys
-from app.core.config import settings
+from app.core import settings
 from sqlalchemy import create_engine, text
 
 try:

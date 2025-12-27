@@ -2,8 +2,16 @@ from enum import Enum
 from functools import lru_cache
 
 
+class ChargeStateEnum(str, Enum):
+    """Support amino acid charge state evaluation."""
+
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    POSITIVE = "positive"
+
+
 class CleavageStatusEnum(str, Enum):
-    """Support site cleavage status."""
+    """Support amino acid site cleavage status."""
 
     NEUTRAL = "neutral"
     MISSED = "missed"
@@ -32,7 +40,7 @@ class ProteaseEnum(str, Enum):
         """Returns set of amino acid strings that a given protease would cleave at."""
         match self:
             case ProteaseEnum.TRYPSIN:
-                return {AminoAcidEnum.LYSINE.value, AminoAcidEnum.ARGININE.value}
+                return {AminoAcidEnum.LYSINE, AminoAcidEnum.ARGININE}
             case _:
                 raise NotImplementedError(
                     f"Cleave aa set for {self.value} are not yet implemented."
@@ -43,19 +51,21 @@ class ProteaseEnum(str, Enum):
         """Returns set of amino acid strings that would inhibit protease cleavage."""
         match self:
             case ProteaseEnum.TRYPSIN:
-                return {AminoAcidEnum.PROLINE.value}
+                return {AminoAcidEnum.PROLINE}
             case _:
                 raise NotImplementedError(
                     f"Inhibit aa set for {self.value} are not yet implemented."
                 )
 
-    def site_status(self, sequence: str, position: int) -> CleavageStatusEnum:
+    def site_status(
+        self, sequence: list["AminoAcidEnum"], position: int
+    ) -> CleavageStatusEnum:
         """
         Determine if this protease would cut after the given position.
         """
         if position < 0 or position >= len(sequence):
             raise IndexError(
-                f"Position {position} is out of bounds for sequence of length {len(sequence)}"
+                f"Position {position} is out of bounds the given sequence."
             )
 
         current_aa = sequence[position]
@@ -111,6 +121,22 @@ class AminoAcidEnum(str, Enum):
     TYROSINE = "Y"
     VALINE = "V"
 
+    @property
+    def pKa(self) -> float:
+        """Return acid dissociation constant for an amino acids side group."""
+        pka_values = {
+            AminoAcidEnum.LYSINE: 10.5,
+            AminoAcidEnum.ARGININE: 12.5,
+            AminoAcidEnum.HISTIDINE: 6.0,
+            AminoAcidEnum.ASPARTIC_ACID: 3.9,
+            AminoAcidEnum.GLUTAMIC_ACID: 4.1,
+            AminoAcidEnum.CYSTEINE: 8.5,
+            AminoAcidEnum.TYROSINE: 10.0,
+        }
+        if self not in pka_values:
+            raise ValueError(f"pKa for {self} is undefined.")
+        return pka_values[self]
+
     @staticmethod
     @lru_cache(maxsize=1)
     def _valid_values() -> set[str]:
@@ -119,6 +145,29 @@ class AminoAcidEnum(str, Enum):
     @staticmethod
     def is_valid_amino_acid(value: str) -> bool:
         return value.upper() in AminoAcidEnum._valid_values()
+
+    @classmethod
+    def to_amino_acids(cls, sequence: str) -> list["AminoAcidEnum"]:
+        """Convert to enum list."""
+        return [AminoAcidEnum(char) for char in sequence]
+
+    def charge_state(self) -> ChargeStateEnum:
+        """Evaluate if amino acid is positive, negative, or neutrally charged."""
+        if self in [
+            AminoAcidEnum.HISTIDINE,
+            AminoAcidEnum.LYSINE,
+            AminoAcidEnum.ARGININE,
+        ]:
+            return ChargeStateEnum.POSITIVE
+        elif self in [
+            AminoAcidEnum.ASPARTIC_ACID,
+            AminoAcidEnum.GLUTAMIC_ACID,
+            AminoAcidEnum.CYSTEINE,
+            AminoAcidEnum.TYROSINE,
+        ]:
+            return ChargeStateEnum.NEGATIVE
+        else:
+            return ChargeStateEnum.NEUTRAL
 
 
 class CriteriaEnum(str, Enum):

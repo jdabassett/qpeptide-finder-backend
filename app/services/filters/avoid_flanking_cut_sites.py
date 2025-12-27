@@ -2,7 +2,7 @@
 Check if sequence flanking peptide have cut motif.
 """
 
-from app.core.config import settings
+from app.core import settings
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
@@ -29,7 +29,7 @@ class AvoidFlankingCutSitesFilter(BaseCriteriaFilter):
         peptide_end_position = peptide.position + peptide.length
         right_flank_start = peptide_end_position
         right_flank_end = min(
-            len(protein.sequence),
+            protein.length,
             peptide_end_position + settings.NUMBER_FLANKING_AMINO_ACIDS - 1,
         )
 

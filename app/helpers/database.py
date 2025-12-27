@@ -244,7 +244,7 @@ def save_peptides_with_criteria(
                 session,
                 Peptide,
                 digest_id=digest_id,
-                sequence=peptide_domain.sequence,
+                sequence=peptide_domain.sequence_as_str,
                 position=peptide_domain.position,
                 flush=True,
                 refresh=True,

@@ -27,10 +27,10 @@ class ProteinDomainFactory(ModelFactory[ProteinDomain]):
 
     @classmethod
     def sequence(cls) -> Any:
-        """Generate a random protein sequence."""
-        amino_acids = [aa.value for aa in AminoAcidEnum]
-        length = random.randint(20, 300)
-        return "".join(random.choice(amino_acids) for _ in range(length))
+        """Generate a random peptide sequence as list of AminoAcidEnum."""
+        amino_acids = list(AminoAcidEnum)
+        length = random.randint(30, 200)
+        return [random.choice(amino_acids) for _ in range(length)]
 
     @classmethod
     def protease(cls) -> Any:
@@ -81,7 +81,7 @@ class ProteinDomainFactory(ModelFactory[ProteinDomain]):
         Create a ProteinDomain instance (same as build for Pydantic models).
         """
         if sequence is not None:
-            kwargs["sequence"] = sequence
+            kwargs["sequence"] = AminoAcidEnum.to_amino_acids(sequence)
         if protease is not None:
             kwargs["protease"] = protease
         return cls.build(with_peptides=with_peptides, **kwargs)
