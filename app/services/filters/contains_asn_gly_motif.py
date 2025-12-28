@@ -1,5 +1,5 @@
 """
-No Aspartic-Proline motif criteria filter.
+Asparagine-Glycine motif criteria filter.
 """
 
 from app.domain import PeptideDomain, ProteinDomain
@@ -7,23 +7,20 @@ from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
-class NoAsparticProlineMotifFilter(BaseCriteriaFilter):
-    """Filter peptide for no Aspartic-Prolime motifs."""
+class ContainsAsparagineGlycineMotifFilter(BaseCriteriaFilter):
+    """Filter peptide for Asparagine-Glycine motifs."""
 
     @property
     def criteria_enum(self) -> CriteriaEnum:
-        return CriteriaEnum.NO_ASP_PRO_MOTIF
+        return CriteriaEnum.CONTAINS_ASPARAGINE_GLYCINE_MOTIF
 
     def evaluate(
         self,
         peptide: PeptideDomain,
         protein: ProteinDomain,
     ) -> bool:
-        """Check if peptide contains an Aspartic-Proline motif."""
-        target: list[AminoAcidEnum] = [
-            AminoAcidEnum.ASPARTIC_ACID,
-            AminoAcidEnum.PROLINE,
-        ]
+        """True if peptide contains an Asparagine-Glycine motif."""
+        target: list[AminoAcidEnum] = [AminoAcidEnum.ASPARAGINE, AminoAcidEnum.GLYCINE]
         index: int = 0
 
         for aa in peptide.sequence:

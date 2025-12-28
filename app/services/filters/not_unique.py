@@ -1,5 +1,5 @@
 """
-Peptide unique criteria filter.
+Not unique criteria filter.
 """
 
 from app.domain import PeptideDomain, ProteinDomain
@@ -7,12 +7,12 @@ from app.enums import CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
-class UniqueSequenceFilter(BaseCriteriaFilter):
-    """Filter peptides if unique."""
+class NotUniqueFilter(BaseCriteriaFilter):
+    """Filter if peptide is not unique."""
 
     @property
     def criteria_enum(self) -> CriteriaEnum:
-        return CriteriaEnum.UNIQUE_SEQUENCE
+        return CriteriaEnum.NOT_UNIQUE
 
     def evaluate(
         self,
@@ -29,4 +29,4 @@ class UniqueSequenceFilter(BaseCriteriaFilter):
             if protein.sequence[i : i + peptide_len] == peptide.sequence:
                 count += 1
 
-        return count == 1
+        return count > 1

@@ -1,5 +1,5 @@
 """
-Avoid cysteine criteria filter.
+Methionine criteria filter.
 """
 
 from app.domain import PeptideDomain, ProteinDomain
@@ -7,17 +7,17 @@ from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
-class AvoidCysteineFilter(BaseCriteriaFilter):
-    """Filter peptide to avoid cysteine."""
+class ContainsMethionineFilter(BaseCriteriaFilter):
+    """Filter peptide if contains methionine."""
 
     @property
     def criteria_enum(self) -> CriteriaEnum:
-        return CriteriaEnum.AVOID_CYSTEINE
+        return CriteriaEnum.CONTAINS_METHIONINE
 
     def evaluate(
         self,
         peptide: PeptideDomain,
         protein: ProteinDomain,
     ) -> bool:
-        """Check if peptide contains cysteine."""
-        return AminoAcidEnum.CYSTEINE in peptide.sequence
+        """True if peptide contains methionine."""
+        return AminoAcidEnum.METHIONINE in peptide.sequence

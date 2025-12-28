@@ -137,6 +137,35 @@ class AminoAcidEnum(str, Enum):
             raise ValueError(f"pKa for {self} is undefined.")
         return pka_values[self]
 
+    @property
+    def kd_score(self) -> float:
+        """Return Kyte-Doolittle max average hydrophobicity score for given amino acid."""
+        kd_scores = {
+            AminoAcidEnum.ALANINE: 1.8,
+            AminoAcidEnum.CYSTEINE: 2.5,
+            AminoAcidEnum.ASPARTIC_ACID: -3.5,
+            AminoAcidEnum.GLUTAMIC_ACID: -3.5,
+            AminoAcidEnum.PHENYLALANINE: 2.8,
+            AminoAcidEnum.GLYCINE: -0.4,
+            AminoAcidEnum.HISTIDINE: -3.2,
+            AminoAcidEnum.ISOLEUCINE: 4.5,
+            AminoAcidEnum.LYSINE: -3.9,
+            AminoAcidEnum.LEUCINE: 3.8,
+            AminoAcidEnum.METHIONINE: 1.9,
+            AminoAcidEnum.ASPARAGINE: -3.5,
+            AminoAcidEnum.PROLINE: -1.6,
+            AminoAcidEnum.GLUTAMINE: -3.5,
+            AminoAcidEnum.ARGININE: -4.5,
+            AminoAcidEnum.SERINE: -0.8,
+            AminoAcidEnum.THREONINE: -0.7,
+            AminoAcidEnum.VALINE: 4.2,
+            AminoAcidEnum.TRYPTOPHAN: -0.9,
+            AminoAcidEnum.TYROSINE: -1.3,
+        }
+        if self not in kd_scores:
+            raise ValueError(f"Kyte-Doolittle score for {self} is undefined.")
+        return kd_scores[self]
+
     @staticmethod
     @lru_cache(maxsize=1)
     def _valid_values() -> set[str]:
@@ -173,18 +202,18 @@ class AminoAcidEnum(str, Enum):
 class CriteriaEnum(str, Enum):
     """All supported qpeptide criteria."""
 
-    UNIQUE_SEQUENCE = "unique_sequence"
-    NO_MISSED_CLEAVAGE = "no_missed_cleavage"
-    AVOID_FLANKING_CUT_SITES = "avoid_flanking_cut_sites"
-    FLANKING_AMINO_ACIDS = "flanking_amino_acids"
-    PEPTIDE_LENGTH = "peptide_length"
-    NO_N_TERMINAL_GLUTAMINE = "no_n-terminal_glutamine"
-    NO_ASP_PRO_MOTIF = "no_asp_pro_motif"
-    NO_ASN_GLY_MOTIF = "no_asn_gly_motif"
-    AVOID_METHIONINE = "avoid_methionine"
-    AVOID_CYSTEINE = "avoid_cysteine"
-    PEPTIDE_PI = "peptide_pi"
-    AVOID_PTM_PRONE_RESIDUES = "avoid_ptm_prone_residues"
-    AVOID_HIGHLY_HYDROPHOBIC_PEPTIDES = "avoid_highly_hydrophobic_peptides"
-    AVOID_LONG_HOMOPOLYMERIC_STRETCHES = "avoid_long_homopolymeric_stretches"
-    PREFER_TYPICAL_CHARGE_STATES = "prefer_typical_charge_states"
+    CONTAINS_PTM_PRONE_AMINO_ACIDS = "avoid_ptm_prone_amino_acids"
+    CONTAINS_ASPARAGINE_GLYCINE_MOTIF = "contains_asparagine_glycine_motif"
+    CONTAINS_ASPARTIC_PROLINE_MOTIF = "contains_aspartic_proline_motif"
+    CONTAINS_CYSTEINE = "contains_cysteine"
+    CONTAINS_LONG_HOMOPOLYMERIC_STRETCH = "contains_long_homopolymeric_stretch"
+    CONTAINS_METHIONINE = "contains_methionine"
+    CONTAINS_MISSED_CLEAVAGES = "contains_missed_cleavages"
+    CONTAINS_N_TERMINAL_GLUTAMINE_MOTIF = "contains_n_terminal_glutamine_motif"
+    HAS_FLANKING_CUT_SITES = "has_flanking_cut_sites"
+    LACKING_FLANKING_AMINO_ACIDS = "lacking_flanking_amino_acids"
+    NOT_UNIQUE = "not_unique"
+    OUTLIER_CHARGE_STATE = "outlier_charge_state"
+    OUTLIER_HYDROPHOBICITY = "outlier_hydrophobicity"
+    OUTLIER_LENGTH = "outlier_length"
+    OUTLIER_PI = "outlier_pi"

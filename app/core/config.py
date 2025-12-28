@@ -160,6 +160,12 @@ class Settings(BaseSettings):
     NUMBER_FLANKING_AMINO_ACIDS: int = 6
     LOW_PI_RANGE: float = 4.0
     HIGH_PI_RANGE: float = 9.0
+    LOW_CHARGE_STATE: int = 1
+    HIGH_CHARGE_STATE: int = 4
+    MAX_HOMOPOLYMERIC_LENGTH: int = 3
+    MAX_HYDROPHOBICITY_WINDOW: int = 9
+    MIN_KD_SCORE: float = 0.5
+    MAX_KD_SCORE: float = 2.0
 
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod

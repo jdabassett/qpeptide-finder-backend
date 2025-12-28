@@ -13,15 +13,21 @@ from app.helpers import save_peptides_with_criteria
 from app.helpers.database import get_record, update_record
 from app.models import Digest
 from app.services import (
-    AvoidCysteineFilter,
-    AvoidFlankingCutSitesFilter,
-    AvoidMethionineFilter,
+    ContainsAsparagineGlycineMotifFilter,
+    ContainsAsparticProlineMotifFilter,
+    ContainsCysteineFilter,
+    ContainsLongHomopolymericStretchFilter,
+    ContainsMethionineFilter,
+    ContainsMissedCleavagesFilter,
+    ContainsNTerminalGlutamineMotifFilter,
     CriteriaEvaluator,
-    NoAsparagineGlycineMotifFilter,
-    NoAsparticProlineMotifFilter,
-    PeptideLengthFilter,
-    PeptidePIFilter,
-    UniqueSequenceFilter,
+    HasFlankingCutSitesFilter,
+    LackingFlankingAminoAcidsFilter,
+    NotUniqueFilter,
+    OutlierChargeStateFilter,
+    OutlierHydrophobicityFilter,
+    OutlierLengthFilter,
+    OutlierPIFilter,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,14 +36,20 @@ logger = logging.getLogger(__name__)
 def create_default_criteria_evaluator() -> CriteriaEvaluator:
     """Create a default criteria evaluator with standard filters."""
     filters = [
-        PeptideLengthFilter(),
-        AvoidMethionineFilter(),
-        AvoidCysteineFilter(),
-        NoAsparagineGlycineMotifFilter(),
-        NoAsparticProlineMotifFilter(),
-        UniqueSequenceFilter(),
-        AvoidFlankingCutSitesFilter(),
-        PeptidePIFilter(),
+        ContainsAsparagineGlycineMotifFilter(),
+        ContainsAsparticProlineMotifFilter(),
+        ContainsCysteineFilter(),
+        ContainsLongHomopolymericStretchFilter(),
+        ContainsMethionineFilter(),
+        ContainsMissedCleavagesFilter(),
+        ContainsNTerminalGlutamineMotifFilter(),
+        HasFlankingCutSitesFilter(),
+        LackingFlankingAminoAcidsFilter(),
+        NotUniqueFilter(),
+        OutlierChargeStateFilter(),
+        OutlierHydrophobicityFilter(),
+        OutlierLengthFilter(),
+        OutlierPIFilter(),
     ]
     return CriteriaEvaluator(filters)
 

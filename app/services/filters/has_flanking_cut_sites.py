@@ -1,5 +1,5 @@
 """
-Check if sequence flanking peptide have cut motif.
+Has flanking cut sites criteria filter.
 """
 
 from app.core import settings
@@ -8,19 +8,19 @@ from app.enums import CriteriaEnum
 from app.services.filters.base import BaseCriteriaFilter
 
 
-class AvoidFlankingCutSitesFilter(BaseCriteriaFilter):
-    """Check if equence flanking peptide have cut motif."""
+class HasFlankingCutSitesFilter(BaseCriteriaFilter):
+    """Check flanking sites contain cut site(s)."""
 
     @property
     def criteria_enum(self) -> CriteriaEnum:
-        return CriteriaEnum.AVOID_FLANKING_CUT_SITES
+        return CriteriaEnum.HAS_FLANKING_CUT_SITES
 
     def evaluate(
         self,
         peptide: PeptideDomain,
         protein: ProteinDomain,
     ) -> bool:
-        """Check if sequence flanking peptide have cut motif."""
+        """True if flanking sequences have cut site(s)."""
         left_flank_start = max(
             1, peptide.position - settings.NUMBER_FLANKING_AMINO_ACIDS
         )
