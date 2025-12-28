@@ -3,7 +3,7 @@ from logging.config import fileConfig
 from sqlalchemy import create_engine, pool
 
 from alembic import context  # type: ignore[attr-defined]
-from app.core.config import settings
+from app.core import settings
 
 # Import all models to ensure they're registered with Base.metadata
 from app.models import Criteria, Digest, Peptide, PeptideCriteria, User  # noqa: F401

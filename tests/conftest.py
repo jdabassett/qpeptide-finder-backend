@@ -4,6 +4,7 @@ Pytest configuration and shared fixtures.
 
 import uuid
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from factory.alchemy import SQLAlchemyModelFactory
@@ -13,12 +14,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import get_db
-from app.enums import CriteriaEnum
+from app.domain import PeptideDomain, ProteinDomain
+from app.enums import AminoAcidEnum, CriteriaEnum
 from app.main import app
 
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Criteria, Digest, Peptide, User  # noqa: F401
 from app.models.base import Base
+from tests.factories.domains import PeptideDomainFactory, ProteinDomainFactory
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -180,3 +183,63 @@ def client(db_session: Session):
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="session")
+def bad_universal_peptide1() -> Any:
+    """
+    Create a peptide will not pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=1,
+        sequence=AminoAcidEnum.to_amino_acids("QCNGDPKPWWWWWWWWMCNGDPKPWWWWWWWWR"),
+    )
+
+
+@pytest.fixture(scope="session")
+def bad_universal_peptide2() -> Any:
+    """
+    Create a peptide will not pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=41,
+        sequence=AminoAcidEnum.to_amino_acids("QCNGDPKPWWWWWWWWMCNGDPKPWWWWWWWWR"),
+    )
+
+
+@pytest.fixture(scope="session")
+def good_universal_peptide() -> Any:
+    """
+    Create a peptide will pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=34,
+        sequence=AminoAcidEnum.to_amino_acids("AEDIHYK"),
+    )
+
+
+@pytest.fixture(scope="session")
+def universal_protein(
+    bad_universal_peptide1: PeptideDomain,
+    good_universal_peptide: PeptideDomain,
+    bad_universal_peptide2: PeptideDomain,
+) -> ProteinDomain:
+    """
+    Create a universal protein domain that can be used across multiple tests.
+    """
+    sequence: list[AminoAcidEnum] = (
+        bad_universal_peptide1.sequence
+        + good_universal_peptide.sequence
+        + bad_universal_peptide2.sequence
+    )
+    return ProteinDomainFactory.build(
+        sequence=sequence,
+        cut_sites={33, 40, 73},
+        missed_cut_sites={7, 23, 47, 63},
+        all_cut_sites={7, 23, 33, 40, 47, 63, 73},
+        peptides=[
+            bad_universal_peptide1,
+            good_universal_peptide,
+            bad_universal_peptide2,
+        ],
+    )
