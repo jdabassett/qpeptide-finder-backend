@@ -202,7 +202,6 @@ class AminoAcidEnum(str, Enum):
 class CriteriaEnum(str, Enum):
     """All supported qpeptide criteria."""
 
-    CONTAINS_PTM_PRONE_AMINO_ACIDS = "avoid_ptm_prone_amino_acids"
     CONTAINS_ASPARAGINE_GLYCINE_MOTIF = "contains_asparagine_glycine_motif"
     CONTAINS_ASPARTIC_PROLINE_MOTIF = "contains_aspartic_proline_motif"
     CONTAINS_CYSTEINE = "contains_cysteine"

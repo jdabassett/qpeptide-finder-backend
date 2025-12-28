@@ -240,12 +240,19 @@ def save_peptides_with_criteria(
 
     try:
         for peptide_domain in peptides:
+            peptide_domain.get_pI()
+            peptide_domain.charge_state_in_formic_acid()
+            peptide_domain.max_kyte_dolittle_score_over_sliding_window()
+
             peptide = create_record(
                 session,
                 Peptide,
                 digest_id=digest_id,
                 sequence=peptide_domain.sequence_as_str,
                 position=peptide_domain.position,
+                pi=peptide_domain.pI,
+                charge_state=peptide_domain.charge_state,
+                max_kd_score=peptide_domain.max_kd_score,
                 flush=True,
                 refresh=True,
                 commit=False,

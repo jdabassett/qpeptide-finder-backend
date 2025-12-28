@@ -83,11 +83,6 @@ CRITERIA_DATA = [
         "rationale": "Acidic peptides ionize more efficiently in positive-mode electrospray and elute reproducibly in LC-MS, improving detectability.",
     },
     {
-        "code": "avoid_ptm_prone_residues",
-        "goal": "Avoid peptides likely to carry modifications.",
-        "rationale": "PTMs create multiple peptide forms, reducing quantitative precision. Only necessary if the protein is known or suspected to be modified.",
-    },
-    {
         "code": "avoid_highly_hydrophobic_peptides",
         "goal": "Exclude transmembrane or very hydrophobic regions.",
         "rationale": "Hydrophobic peptides adhere to columns, elute poorly, and ionize inefficiently, lowering MS signal.",

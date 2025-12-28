@@ -31,3 +31,18 @@ class PeptideDomainFactory(ModelFactory[PeptideDomain]):
     def criteria(cls) -> Any:
         """Generate empty criteria list by default."""
         return []
+
+    @classmethod
+    def pi(cls) -> Any:
+        """Generate a random pI value."""
+        return random.uniform(1.0, 11.0)
+
+    @classmethod
+    def charge_state(cls) -> Any:
+        """Generate a random charge state."""
+        return random.randint(-3, 4)
+
+    @classmethod
+    def max_kd_score(cls) -> Any:
+        """Generate a random KD score."""
+        return random.uniform(-2.0, 4.0)
