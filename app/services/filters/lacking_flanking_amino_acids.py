@@ -27,4 +27,4 @@ class LackingFlankingAminoAcidsFilter(BaseCriteriaFilter):
             peptide.position + peptide.length + settings.NUMBER_FLANKING_AMINO_ACIDS - 1
         )
 
-        return left_flank_start > 0 and right_flank_end < protein.length
+        return left_flank_start < 0 or protein.length < right_flank_end

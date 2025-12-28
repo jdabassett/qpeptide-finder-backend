@@ -22,9 +22,9 @@ class HasFlankingCutSitesFilter(BaseCriteriaFilter):
     ) -> bool:
         """True if flanking sequences have cut site(s)."""
         left_flank_start = max(
-            1, peptide.position - settings.NUMBER_FLANKING_AMINO_ACIDS
+            1, peptide.position - settings.NUMBER_FLANKING_AMINO_ACIDS - 1
         )
-        left_flank_end = peptide.position - 1
+        left_flank_end = peptide.position - 2
 
         peptide_end_position = peptide.position + peptide.length
         right_flank_start = peptide_end_position
