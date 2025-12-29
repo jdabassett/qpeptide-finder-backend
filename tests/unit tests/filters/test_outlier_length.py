@@ -7,7 +7,7 @@ import pytest
 from app.domain import ProteinDomain
 from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services import OutlierLengthFilter
-from tests.factories.domains import PeptideDomainFactory
+from tests.factories import PeptideDomainFactory
 
 
 @pytest.mark.parametrize(

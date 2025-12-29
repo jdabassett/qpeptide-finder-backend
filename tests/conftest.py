@@ -21,7 +21,7 @@ from app.main import app
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Criteria, Digest, Peptide, User  # noqa: F401
 from app.models.base import Base
-from tests.factories.domains import PeptideDomainFactory, ProteinDomainFactory
+from tests.factories import PeptideDomainFactory, ProteinDomainFactory
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 

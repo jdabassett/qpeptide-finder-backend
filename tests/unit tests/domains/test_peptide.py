@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.enums import AminoAcidEnum
-from tests.factories.domains import PeptideDomainFactory
+from tests.factories import PeptideDomainFactory
 
 
 @pytest.mark.unit

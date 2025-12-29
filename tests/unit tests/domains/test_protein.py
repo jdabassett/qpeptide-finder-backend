@@ -2,8 +2,7 @@ import pytest
 
 from app.domain import ProteinDomain
 from app.enums import AminoAcidEnum, ProteaseEnum
-from tests.factories.domains import ProteinDomainFactory
-from tests.factories.models.digest_factory import DigestFactory
+from tests.factories import DigestFactory, ProteinDomainFactory
 
 
 @pytest.mark.unit

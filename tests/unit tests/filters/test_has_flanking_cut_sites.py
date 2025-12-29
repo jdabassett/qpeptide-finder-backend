@@ -7,7 +7,7 @@ import pytest
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services import HasFlankingCutSitesFilter
-from tests.factories.domains import ProteinDomainFactory
+from tests.factories import ProteinDomainFactory
 
 
 @pytest.mark.unit

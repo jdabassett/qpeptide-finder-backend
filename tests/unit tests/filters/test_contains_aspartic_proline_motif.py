@@ -7,7 +7,7 @@ import pytest
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import AminoAcidEnum, CriteriaEnum
 from app.services import ContainsAsparticProlineMotifFilter
-from tests.factories.domains import PeptideDomainFactory
+from tests.factories import PeptideDomainFactory
 
 
 @pytest.mark.unit
