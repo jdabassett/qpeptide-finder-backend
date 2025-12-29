@@ -38,21 +38,25 @@ class PeptideDomain(BaseModel):
 
     def _net_charge(self, pH: float):
         """Calculate net charge of peptide at a given pH."""
-        n_term_charge = 1 / (1 + 10 ** (pH - 8.0))
-        c_term_charge = -1 / (1 + 10 ** (3.55 - pH))
+        n_term_aa: AminoAcidEnum = self.sequence[0]
+        c_term_aa: AminoAcidEnum = self.sequence[-1]
 
-        pos_charge = 0
-        neg_charge = 0
+        n_term_charge: float = 1 / (1 + 10 ** (pH - n_term_aa.n_terminal_pKa()))
+        c_term_charge: float = -1 / (1 + 10 ** (c_term_aa.c_terminal_pKa() - pH))
 
-        for aa in self.sequence:
-            if aa.charge_state == ChargeStateEnum.POSITIVE:
-                pos_charge += 1 / (1 + 10 ** (pH - aa.pKa))
-            elif aa.charge_state == ChargeStateEnum.NEGATIVE:
+        pos_charge: float = 0.0
+        neg_charge: float = 0.0
+
+        for i, aa in enumerate(self.sequence):
+            if aa.charge_state() == ChargeStateEnum.POSITIVE:
+                weight = 0.9 if i in (0, self.length - 1) else 1.0
+                pos_charge += weight / (1 + 10 ** (pH - aa.pKa))
+            elif aa.charge_state() == ChargeStateEnum.NEGATIVE:
                 neg_charge += -1 / (1 + 10 ** (aa.pKa - pH))
 
         return n_term_charge + c_term_charge + pos_charge + neg_charge
 
-    def calculate_pI(self, precision: float = 0.1):
+    def calculate_pI(self, precision: float = 0.05):
         """Estimate the isoelectric point (pI) of a peptide."""
         low, high = 0.0, 14.0
         while (high - low) > precision:
@@ -62,7 +66,7 @@ class PeptideDomain(BaseModel):
             else:
                 high = mid
 
-        self.pI = (low + high) / 2
+        self.pI = round((low + high) / 2, 2)
         return self.pI
 
     def charge_state_in_formic_acid(self) -> int:
@@ -87,7 +91,7 @@ class PeptideDomain(BaseModel):
             window_avg = sum(kd_values[i : i + window_size]) / window_size
             max_score = max(window_avg, max_score)
 
-        self.max_kd_score = max_score
+        self.max_kd_score = round(max_score, 2)
         return self.max_kd_score
 
     def max_kyte_dolittle_score_over_sliding_window(self) -> float:
@@ -96,7 +100,7 @@ class PeptideDomain(BaseModel):
             return self.max_kd_score
 
         if not self.sequence:
-            self.max_kd_score = 0.0
+            self.max_kd_score = 0.00
             return self.max_kd_score
 
         self.max_kd_score = (

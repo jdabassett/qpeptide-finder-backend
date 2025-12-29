@@ -125,17 +125,51 @@ class AminoAcidEnum(str, Enum):
     def pKa(self) -> float:
         """Return acid dissociation constant for an amino acids side group."""
         pka_values = {
-            AminoAcidEnum.LYSINE: 10.5,
-            AminoAcidEnum.ARGININE: 12.5,
+            AminoAcidEnum.LYSINE: 10.53,
+            AminoAcidEnum.ARGININE: 12.48,
             AminoAcidEnum.HISTIDINE: 6.0,
-            AminoAcidEnum.ASPARTIC_ACID: 3.9,
-            AminoAcidEnum.GLUTAMIC_ACID: 4.1,
-            AminoAcidEnum.CYSTEINE: 8.5,
-            AminoAcidEnum.TYROSINE: 10.0,
+            AminoAcidEnum.ASPARTIC_ACID: 3.86,
+            AminoAcidEnum.GLUTAMIC_ACID: 4.25,
+            AminoAcidEnum.CYSTEINE: 8.33,
+            AminoAcidEnum.TYROSINE: 10.07,
         }
         if self not in pka_values:
             raise ValueError(f"pKa for {self} is undefined.")
         return pka_values[self]
+
+    def n_terminal_pKa(self) -> float:
+        """
+        Return N-terminal pKa contribution for this amino acid
+        when it is the N-terminal residue of a peptide.
+        """
+        DEFAULT_N_TERMINAL_PKA = 8.2
+        N_TERMINAL_PKA_OFFSETS = {
+            AminoAcidEnum.PROLINE: -1.0,
+            AminoAcidEnum.GLYCINE: +0.1,
+            AminoAcidEnum.SERINE: +0.1,
+            AminoAcidEnum.THREONINE: +0.1,
+            AminoAcidEnum.ASPARTIC_ACID: -0.2,
+            AminoAcidEnum.GLUTAMIC_ACID: -0.2,
+        }
+        base_pka = DEFAULT_N_TERMINAL_PKA
+        offset = N_TERMINAL_PKA_OFFSETS.get(self, 0.0)
+        return base_pka + offset
+
+    def c_terminal_pKa(self) -> float:
+        """
+        Return C-terminal pKa contribution for this amino acid
+        when it is the C-terminal residue of a peptide.
+        """
+        DEFAULT_C_TERMINAL_PKA = 3.1
+        C_TERMINAL_PKA_OFFSETS = {
+            AminoAcidEnum.ASPARTIC_ACID: +0.2,
+            AminoAcidEnum.GLUTAMIC_ACID: +0.2,
+            AminoAcidEnum.LYSINE: -0.1,
+            AminoAcidEnum.ARGININE: -0.1,
+        }
+        base_pka = DEFAULT_C_TERMINAL_PKA
+        offset = C_TERMINAL_PKA_OFFSETS.get(self, 0.0)
+        return base_pka + offset
 
     @property
     def kd_score(self) -> float:
