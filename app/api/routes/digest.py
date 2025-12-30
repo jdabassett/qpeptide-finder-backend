@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -14,6 +16,8 @@ from app.helpers import (
 from app.models import Digest, User
 from app.schemas.digest import DigestJobRequest, DigestJobResponse
 from app.tasks import process_digest_job
+
+logger = logging.getLogger(__name__)
 
 digest_router = APIRouter(prefix="/digests", tags=["digests"])
 
@@ -33,12 +37,15 @@ def create_digest_job(
 
     Returns the digest job ID.
     """
+    logger.info(f"Received digest job request: user_email={job_request.user_email}")
 
     user = get_record_or_exception(session, User, email=job_request.user_email)
 
     request_within_digest_limit_or_exception(user.id, session)
 
     request_outside_digest_interval_or_exception(user.id, session)
+
+    logger.debug(f"Digest checks passed for user_email={job_request.user_email}")
 
     try:
         digest: Digest = create_record(
@@ -56,20 +63,36 @@ def create_digest_job(
 
         background_tasks.add_task(process_digest_job, protein_domain)
 
+        logger.info(
+            f"Background task queued for digest_id={digest.id} and user_email={job_request.user_email}"
+        )
+
         return DigestJobResponse(
             digest_id=digest.id,
         )
     except IntegrityError as e:
+        logger.error(
+            f"Database constraint violation while creating digest job: "
+            f"user_email={job_request.user_email}, error={str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to create digest job due to database constraint violation. Error: {str(e)}",
         ) from e
     except ValueError as e:
+        logger.error(
+            f"Invalid digest job data: user_email={job_request.user_email}, "
+            f"error={str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid digest job data: {str(e)}",
         ) from e
     except Exception as e:
+        logger.exception(
+            f"Unexpected error in create_digest_job: user_email={job_request.user_email}, "
+            f"error={str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred while creating digest job: {str(e)}",
