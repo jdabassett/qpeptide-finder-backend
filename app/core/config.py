@@ -207,11 +207,21 @@ class Settings(BaseSettings):
                                 value_to_set = int(value)
                             except ValueError:
                                 value_to_set = value
+                        elif field_type is float and isinstance(value, str):
+                            try:
+                                value_to_set = float(value)
+                            except ValueError:
+                                logger.warning(
+                                    f"Could not convert '{key}' value '{value}' to float, keeping as string"
+                                )
+                                value_to_set = value
 
                     setattr(self, key, value_to_set)
                 else:
-                    # Set new attributes from secrets
-                    setattr(self, key, value)
+                    logger.warning(
+                        f"Ignoring unknown secret key '{key}' from AWS Secrets Manager. "
+                        "This key is not defined in the Settings model."
+                    )
 
         # Validate required fields after loading all sources
         if not self.DATABASE_URL:
