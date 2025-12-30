@@ -3,6 +3,7 @@ Background task for processing digest jobs.
 """
 
 import logging
+import time
 
 from sqlalchemy.orm import Session
 
@@ -85,9 +86,16 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
         logger.info(f"Digested protein for digest_id: {protein_domain.digest_id}")
 
         evaluator = create_default_criteria_evaluator()
+        num_peptides_before = len(protein_domain.peptides)
+        filter_start_time = time.perf_counter()
         evaluator.evaluate_peptides(protein_domain)
+        filter_duration = time.perf_counter() - filter_start_time
 
-        logger.info(f"Filtered all peptides for digest_id: {protein_domain.digest_id}")
+        logger.info(
+            f"Filtered all peptides for digest_id: {protein_domain.digest_id} - "
+            f"processed {num_peptides_before} peptides through {len(evaluator.filters)} filters "
+            f"in {filter_duration:.4f} seconds"
+        )
 
         save_peptides_with_criteria(
             session=session,

@@ -1,3 +1,3 @@
-from app.core.config import settings
+from app.core.config import configure_logging, settings
 
-__all__ = ["settings"]
+__all__ = ["settings", "configure_logging"]
