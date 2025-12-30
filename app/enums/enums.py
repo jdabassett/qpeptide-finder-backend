@@ -2,6 +2,22 @@ from enum import Enum
 from functools import lru_cache
 
 
+class ChargeStateEnum(str, Enum):
+    """Support amino acid charge state evaluation."""
+
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    POSITIVE = "positive"
+
+
+class CleavageStatusEnum(str, Enum):
+    """Support amino acid site cleavage status."""
+
+    NEUTRAL = "neutral"
+    MISSED = "missed"
+    CLEAVAGE = "cleavage"
+
+
 class ProteaseEnum(str, Enum):
     """Supported proteases."""
 
@@ -18,6 +34,59 @@ class ProteaseEnum(str, Enum):
     # PEPSIN = "pepsin"
     # SUBTILISIN = "subtilisin"
     # PROLINE_ENDOPEPTIDASE = "proline_endopeptidase"
+
+    @property
+    def cleavage_aas(self) -> set[str]:
+        """Returns set of amino acid strings that a given protease would cleave at."""
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                return {AminoAcidEnum.LYSINE, AminoAcidEnum.ARGININE}
+            case _:
+                raise NotImplementedError(
+                    f"Cleave aa set for {self.value} are not yet implemented."
+                )
+
+    @property
+    def inhibitor_aas(self) -> set[str]:
+        """Returns set of amino acid strings that would inhibit protease cleavage."""
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                return {AminoAcidEnum.PROLINE}
+            case _:
+                raise NotImplementedError(
+                    f"Inhibit aa set for {self.value} are not yet implemented."
+                )
+
+    def site_status(
+        self, sequence: list["AminoAcidEnum"], position: int
+    ) -> CleavageStatusEnum:
+        """
+        Determine if this protease would cut after the given position.
+        """
+        if position < 0 or position >= len(sequence):
+            raise IndexError(
+                f"Position {position} is out of bounds the given sequence."
+            )
+
+        current_aa = sequence[position]
+
+        match self:
+            case ProteaseEnum.TRYPSIN:
+                if current_aa not in self.cleavage_aas:
+                    return CleavageStatusEnum.NEUTRAL
+
+                next_aa = (
+                    sequence[position + 1] if position + 1 < len(sequence) else None
+                )
+                if next_aa in self.inhibitor_aas:
+                    return CleavageStatusEnum.MISSED
+
+                return CleavageStatusEnum.CLEAVAGE
+
+            case _:
+                raise NotImplementedError(
+                    f"Cleavage rules for {self.value} are not yet implemented"
+                )
 
 
 class DigestStatusEnum(str, Enum):
@@ -52,6 +121,85 @@ class AminoAcidEnum(str, Enum):
     TYROSINE = "Y"
     VALINE = "V"
 
+    @property
+    def pKa(self) -> float:
+        """Return acid dissociation constant for an amino acids side group."""
+        pka_values = {
+            AminoAcidEnum.LYSINE: 10.53,
+            AminoAcidEnum.ARGININE: 12.48,
+            AminoAcidEnum.HISTIDINE: 6.0,
+            AminoAcidEnum.ASPARTIC_ACID: 3.86,
+            AminoAcidEnum.GLUTAMIC_ACID: 4.25,
+            AminoAcidEnum.CYSTEINE: 8.33,
+            AminoAcidEnum.TYROSINE: 10.07,
+        }
+        if self not in pka_values:
+            raise ValueError(f"pKa for {self} is undefined.")
+        return pka_values[self]
+
+    def n_terminal_pKa(self) -> float:
+        """
+        Return N-terminal pKa contribution for this amino acid
+        when it is the N-terminal residue of a peptide.
+        """
+        DEFAULT_N_TERMINAL_PKA = 8.2
+        N_TERMINAL_PKA_OFFSETS = {
+            AminoAcidEnum.PROLINE: -1.0,
+            AminoAcidEnum.GLYCINE: +0.1,
+            AminoAcidEnum.SERINE: +0.1,
+            AminoAcidEnum.THREONINE: +0.1,
+            AminoAcidEnum.ASPARTIC_ACID: -0.2,
+            AminoAcidEnum.GLUTAMIC_ACID: -0.2,
+        }
+        base_pka = DEFAULT_N_TERMINAL_PKA
+        offset = N_TERMINAL_PKA_OFFSETS.get(self, 0.0)
+        return base_pka + offset
+
+    def c_terminal_pKa(self) -> float:
+        """
+        Return C-terminal pKa contribution for this amino acid
+        when it is the C-terminal residue of a peptide.
+        """
+        DEFAULT_C_TERMINAL_PKA = 3.1
+        C_TERMINAL_PKA_OFFSETS = {
+            AminoAcidEnum.ASPARTIC_ACID: +0.2,
+            AminoAcidEnum.GLUTAMIC_ACID: +0.2,
+            AminoAcidEnum.LYSINE: -0.1,
+            AminoAcidEnum.ARGININE: -0.1,
+        }
+        base_pka = DEFAULT_C_TERMINAL_PKA
+        offset = C_TERMINAL_PKA_OFFSETS.get(self, 0.0)
+        return base_pka + offset
+
+    @property
+    def kd_score(self) -> float:
+        """Return Kyte-Doolittle max average hydrophobicity score for given amino acid."""
+        kd_scores = {
+            AminoAcidEnum.ALANINE: 1.8,
+            AminoAcidEnum.CYSTEINE: 2.5,
+            AminoAcidEnum.ASPARTIC_ACID: -3.5,
+            AminoAcidEnum.GLUTAMIC_ACID: -3.5,
+            AminoAcidEnum.PHENYLALANINE: 2.8,
+            AminoAcidEnum.GLYCINE: -0.4,
+            AminoAcidEnum.HISTIDINE: -3.2,
+            AminoAcidEnum.ISOLEUCINE: 4.5,
+            AminoAcidEnum.LYSINE: -3.9,
+            AminoAcidEnum.LEUCINE: 3.8,
+            AminoAcidEnum.METHIONINE: 1.9,
+            AminoAcidEnum.ASPARAGINE: -3.5,
+            AminoAcidEnum.PROLINE: -1.6,
+            AminoAcidEnum.GLUTAMINE: -3.5,
+            AminoAcidEnum.ARGININE: -4.5,
+            AminoAcidEnum.SERINE: -0.8,
+            AminoAcidEnum.THREONINE: -0.7,
+            AminoAcidEnum.VALINE: 4.2,
+            AminoAcidEnum.TRYPTOPHAN: -0.9,
+            AminoAcidEnum.TYROSINE: -1.3,
+        }
+        if self not in kd_scores:
+            raise ValueError(f"Kyte-Doolittle score for {self} is undefined.")
+        return kd_scores[self]
+
     @staticmethod
     @lru_cache(maxsize=1)
     def _valid_values() -> set[str]:
@@ -61,22 +209,44 @@ class AminoAcidEnum(str, Enum):
     def is_valid_amino_acid(value: str) -> bool:
         return value.upper() in AminoAcidEnum._valid_values()
 
+    @classmethod
+    def to_amino_acids(cls, sequence: str) -> list["AminoAcidEnum"]:
+        """Convert to enum list."""
+        return [AminoAcidEnum(char) for char in sequence]
+
+    def charge_state(self) -> ChargeStateEnum:
+        """Evaluate if amino acid is positive, negative, or neutrally charged."""
+        if self in [
+            AminoAcidEnum.HISTIDINE,
+            AminoAcidEnum.LYSINE,
+            AminoAcidEnum.ARGININE,
+        ]:
+            return ChargeStateEnum.POSITIVE
+        elif self in [
+            AminoAcidEnum.ASPARTIC_ACID,
+            AminoAcidEnum.GLUTAMIC_ACID,
+            AminoAcidEnum.CYSTEINE,
+            AminoAcidEnum.TYROSINE,
+        ]:
+            return ChargeStateEnum.NEGATIVE
+        else:
+            return ChargeStateEnum.NEUTRAL
+
 
 class CriteriaEnum(str, Enum):
     """All supported qpeptide criteria."""
 
-    UNIQUE_SEQUENCE = "unique_sequence"
-    NO_MISSED_CLEAVAGE = "no_missed_cleavage"
-    AVOID_FLANKING_CUT_SITES = "avoid_flanking_cut_sites"
-    FLANKING_AMINO_ACIDS = "flanking_amino_acids"
-    PEPTIDE_LENGTH = "peptide_length"
-    NO_N_TERMINAL_GLUTAMINE = "no_n-terminal_glutamine"
-    NO_ASP_PRO_MOTIF = "no_asp_pro_motif"
-    NO_ASN_GLY_MOTIF = "no_asn_gly_motif"
-    AVOID_METHIONINE = "avoid_methionine"
-    AVOID_CYSTEINE = "avoid_cysteine"
-    PEPTIDE_PI = "peptide_pi"
-    AVOID_PTM_PRONE_RESIDUES = "avoid_ptm_prone_residues"
-    AVOID_HIGHLY_HYDROPHOBIC_PEPTIDES = "avoid_highly_hydrophobic_peptides"
-    AVOID_LONG_HOMOPOLYMERIC_STRETCHES = "avoid_long_homopolymeric_stretches"
-    PREFER_TYPICAL_CHARGE_STATES = "prefer_typical_charge_states"
+    CONTAINS_ASPARAGINE_GLYCINE_MOTIF = "contains_asparagine_glycine_motif"
+    CONTAINS_ASPARTIC_PROLINE_MOTIF = "contains_aspartic_proline_motif"
+    CONTAINS_CYSTEINE = "contains_cysteine"
+    CONTAINS_LONG_HOMOPOLYMERIC_STRETCH = "contains_long_homopolymeric_stretch"
+    CONTAINS_METHIONINE = "contains_methionine"
+    CONTAINS_MISSED_CLEAVAGES = "contains_missed_cleavages"
+    CONTAINS_N_TERMINAL_GLUTAMINE_MOTIF = "contains_n_terminal_glutamine_motif"
+    HAS_FLANKING_CUT_SITES = "has_flanking_cut_sites"
+    LACKING_FLANKING_AMINO_ACIDS = "lacking_flanking_amino_acids"
+    NOT_UNIQUE = "not_unique"
+    OUTLIER_CHARGE_STATE = "outlier_charge_state"
+    OUTLIER_HYDROPHOBICITY = "outlier_hydrophobicity"
+    OUTLIER_LENGTH = "outlier_length"
+    OUTLIER_PI = "outlier_pi"

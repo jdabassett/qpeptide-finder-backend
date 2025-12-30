@@ -33,6 +33,7 @@ services:
       - .env
     environment:
       - ENVIRONMENT=development
+      - LOG_LEVEL=DEBUG
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_USER=qpeptide_user
       - DATABASE_URL=mysql+pymysql://qpeptide_user:qpeptide_password@mysql:3306/qpeptide-db

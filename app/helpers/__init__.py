@@ -3,6 +3,7 @@ from app.helpers.database import (
     delete_record,
     get_record,
     get_record_or_exception,
+    save_peptides_with_criteria,
     update_record,
 )
 from app.helpers.digest_route import (
@@ -11,6 +12,7 @@ from app.helpers.digest_route import (
 )
 
 __all__ = [
+    "save_peptides_with_criteria",
     "get_record_or_exception",
     "get_record",
     "delete_record",

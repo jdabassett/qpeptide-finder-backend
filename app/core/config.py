@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import sys
 from typing import Annotated, Any, Union, get_args, get_origin
 
 from pydantic import field_validator, model_validator
@@ -44,19 +45,19 @@ def load_aws_secrets(
         logger.warning("boto3 not available, skipping AWS Secrets Manager")
         return {}
 
+    is_production = os.getenv("ENVIRONMENT", "development").lower() == "production"
+    aws_error_level = logging.ERROR if is_production else logging.DEBUG
+
     try:
         region = region_name or os.getenv("AWS_REGION", "us-east-1")
 
         session = boto3.session.Session()
         client = session.client(service_name="secretsmanager", region_name=region)
 
-        # Retrieve secret
         response = client.get_secret_value(SecretId=secret_name)
 
-        # Parse secret (can be JSON string or plain text)
         secret_string = response["SecretString"]
         try:
-            # Try parsing as JSON
             secrets = json.loads(secret_string)
             if isinstance(secrets, dict):
                 return secrets
@@ -64,7 +65,6 @@ def load_aws_secrets(
                 logger.warning(f"Secret {secret_name} is not a JSON object")
                 return {}
         except json.JSONDecodeError:
-            # If not JSON, treat as plain text (one secret value)
             logger.warning(f"Secret {secret_name} is not JSON, treating as plain text")
             return {}
 
@@ -73,13 +73,13 @@ def load_aws_secrets(
         if error_code == "ResourceNotFoundException":
             logger.warning(f"Secret {secret_name} not found in AWS Secrets Manager")
         else:
-            logger.error(f"Error retrieving secret {secret_name}: {e}")
+            logger.log(aws_error_level, f"Error retrieving secret {secret_name}: {e}")
         return {}
     except BotoCoreError as e:
-        logger.error(f"Error connecting to AWS Secrets Manager: {e}")
+        logger.log(aws_error_level, f"Error connecting to AWS Secrets Manager: {e}")
         return {}
     except Exception as e:
-        logger.error(f"Unexpected error loading AWS secrets: {e}")
+        logger.log(aws_error_level, f"Unexpected error loading AWS secrets: {e}")
         return {}
 
 
@@ -146,6 +146,9 @@ class Settings(BaseSettings):
     # Environment
     ENVIRONMENT: str = "development"
 
+    # Logging
+    LOG_LEVEL: str = "info"
+
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -153,6 +156,19 @@ class Settings(BaseSettings):
     # Digest Job limit per User
     DIGEST_JOB_LIMIT: int = 3
     DIGEST_JOB_INTERVAL: int = 2
+
+    # Peptide Filter Settings
+    MIN_PEPTIDE_LENGTH: int = 7
+    MAX_PEPTIDE_LENGTH: int = 30
+    NUMBER_FLANKING_AMINO_ACIDS: int = 6
+    LOW_PI_RANGE: float = 4.0
+    HIGH_PI_RANGE: float = 9.0
+    LOW_CHARGE_STATE: int = 1
+    HIGH_CHARGE_STATE: int = 4
+    MAX_HOMOPOLYMERIC_LENGTH: int = 3
+    MAX_HYDROPHOBICITY_WINDOW: int = 9
+    MIN_KD_SCORE: float = 0.5
+    MAX_KD_SCORE: float = 2.0
 
     @field_validator("DATABASE_ECHO", mode="before")
     @classmethod
@@ -222,4 +238,43 @@ class Settings(BaseSettings):
         return v
 
 
+def configure_logging(log_level: str, environment: str) -> None:
+    """
+    Configure application logging based on environment.
+
+    Args:
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        environment: Environment name (development, production, etc.)
+    """
+
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+
+    if environment.lower() == "production":
+        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        if numeric_level < logging.INFO:
+            numeric_level = logging.INFO
+    else:
+        log_format = "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
+
+    logging.basicConfig(
+        level=numeric_level,
+        format=log_format,
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[logging.StreamHandler(sys.stdout)],
+        force=True,
+    )
+
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(
+        logging.WARNING if environment.lower() == "production" else logging.INFO
+    )
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.dialects").setLevel(logging.WARNING)
+
+    logging.getLogger("app").setLevel(numeric_level)
+
+
 settings = Settings()
+
+configure_logging(log_level=settings.LOG_LEVEL, environment=settings.ENVIRONMENT)

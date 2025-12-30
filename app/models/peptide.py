@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModelNoTimestamps
@@ -20,6 +20,10 @@ class Peptide(BaseModelNoTimestamps):
     )
     sequence: Mapped[str] = mapped_column(String(500), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    pi: Mapped[float | None] = mapped_column(Float, nullable=True)
+    charge_state: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_kd_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     digest: Mapped["Digest"] = relationship(back_populates="peptides")
 

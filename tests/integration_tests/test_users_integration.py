@@ -7,8 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.user import User
-from tests.factories.dto.user_factory import UserCreateFactory
-from tests.factories.models.user_factory import UserFactory
+from tests.factories import UserCreateFactory, UserFactory
 
 
 @pytest.mark.unit

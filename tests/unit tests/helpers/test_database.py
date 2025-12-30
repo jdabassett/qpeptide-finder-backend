@@ -20,7 +20,7 @@ from app.helpers.database import (
     update_record,
 )
 from app.models import Criteria, Digest, Peptide, PeptideCriteria, User
-from tests.factories.models import (
+from tests.factories import (
     DigestFactory,
     PeptideCriteriaFactory,
     PeptideFactory,

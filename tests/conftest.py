@@ -4,6 +4,7 @@ Pytest configuration and shared fixtures.
 
 import uuid
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from factory.alchemy import SQLAlchemyModelFactory
@@ -13,91 +14,88 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.session import get_db
-from app.enums import CriteriaEnum
+from app.domain import PeptideDomain, ProteinDomain
+from app.enums import AminoAcidEnum, CriteriaEnum
 from app.main import app
 
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Criteria, Digest, Peptide, User  # noqa: F401
 from app.models.base import Base
+from tests.factories import PeptideDomainFactory, ProteinDomainFactory
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
 # Criteria data from migration - must match alembic/versions/1d3884dbeb40_create_tables.py
 CRITERIA_DATA = [
     {
-        "code": "unique_sequence",
+        "code": "not_unique",
         "goal": "The peptide must unique within the target protein.",
         "rationale": "Ensures that the measured signal reflects only one site from the protein of interest.",
     },
     {
-        "code": "no_missed_cleavage",
+        "code": "has_flanking_cut_sites",
+        "goal": "Do not choose peptides immediately adjacent to cleavage motifs (e.g., K, R, KP, RP).",
+        "rationale": "Proximity to other cut sites can reduce digestion efficiency, leading to missed cleavages or semi-tryptic peptides.",
+    },
+    {
+        "code": "contains_missed_cleavages",
         "goal": "Ensure the peptide is completely generated during digestion.",
         "rationale": "Missed cleavage sites (e.g., Lys-Pro, Arg-Pro) produce heterogeneous peptide populations, reducing reproducibility and quantitative accuracy.",
     },
     {
-        "code": "avoid_flanking_cut_sites",
-        "goal": "Do not choose peptides immediately adjacent to cleavage motifs (e.g., KP, RP, PP).",
-        "rationale": "Proximity to other cut sites can reduce digestion efficiency, leading to missed cleavages or semi-tryptic peptides.",
-    },
-    {
-        "code": "flanking_amino_acids",
-        "goal": "Prioritizes peptides with at least 6 residues on both sides of the cleavage site in the intact protein.",
-        "rationale": "Improves trypsin accessibility and digestion efficiency, producing more consistent peptide generation.",
-    },
-    {
-        "code": "peptide_length",
+        "code": "outlier_length",
         "goal": "7–30 amino acids.",
         "rationale": "Peptides shorter than 7 residues are often not unique and fragment poorly. Peptides longer than 30 residues ionize inefficiently and fragment unpredictably. This range provides optimal MS detectability and sequence coverage.",
     },
     {
-        "code": "no_n-terminal_glutamine",
-        "goal": "Exclude peptides with N-terminal glutamine.",
-        "rationale": "N-terminal glutamine cyclizes to pyroglutamate or converts to glutamate post-digestion, producing multiple forms that complicate quantification.",
+        "code": "lacking_flanking_amino_acids",
+        "goal": "Prioritizes peptides with at least 6 residues on both sides of the cleavage site in the intact protein.",
+        "rationale": "Improves trypsin accessibility and digestion efficiency, producing more consistent peptide generation.",
     },
     {
-        "code": "no_asp_pro_motif",
-        "goal": "Exclude Asp–Pro sequences.",
-        "rationale": "Aspartic acid followed by proline causes preferential gas-phase cleavage, producing non-informative fragmentation spectra and reducing identification confidence.",
+        "code": "outlier_hydrophobicity",
+        "goal": "Exclude peptides with extreme hydrophobicity values (too hydrophobic or too hydrophilic).",
+        "rationale": "Very hydrophobic peptides adhere to columns, elute poorly, and ionize inefficiently, lowering MS signal. Highly hydrophilic peptides are too soluble and won't bind to the column long enough to elute in the retention curve, also reducing detectability.",
     },
     {
-        "code": "no_asn_gly_motif",
+        "code": "outlier_charge_state",
+        "goal": "Favor peptides that form 2+ or 3+ ions.",
+        "rationale": "Very basic peptides (4+ or higher) or neutral peptides (1+) fragment less predictably, decreasing identification reliability.",
+    },
+    {
+        "code": "outlier_pi",
+        "goal": "Select peptides with a pI between 4 and 9.",
+        "rationale": "Peptides with pI between 4 and 9 reliably produce clean LC peaks, stable charge states, and informative MS/MS spectra under acidic RP-LC-ESI conditions.",
+    },
+    {
+        "code": "contains_asparagine_glycine_motif",
         "goal": "Exclude Asparagine–Glycine sequences.",
         "rationale": "N–G motifs deamidate rapidly post-digestion, producing mixed modified/unmodified peptides that complicate quantitation.",
     },
     {
-        "code": "avoid_methionine",
-        "goal": "Avoid methionine-containing peptides.",
-        "rationale": "Methionine oxidizes readily during sample handling, generating multiple peptide species with different masses and retention times, reducing quantitative precision.",
+        "code": "contains_aspartic_proline_motif",
+        "goal": "Exclude Aspartic–Proline sequences.",
+        "rationale": "Aspartic acid followed by proline causes preferential gas-phase cleavage, producing non-informative fragmentation spectra and reducing identification confidence.",
     },
     {
-        "code": "avoid_cysteine",
-        "goal": "Minimize peptides containing cysteine.",
-        "rationale": "Cysteine requires alkylation; incomplete or over-alkylation creates heterogeneous populations, reducing quantitative reliability.",
-    },
-    {
-        "code": "peptide_pi",
-        "goal": "Select peptides with pI below ~4.5.",
-        "rationale": "Acidic peptides ionize more efficiently in positive-mode electrospray and elute reproducibly in LC-MS, improving detectability.",
-    },
-    {
-        "code": "avoid_ptm_prone_residues",
-        "goal": "Avoid peptides likely to carry modifications.",
-        "rationale": "PTMs create multiple peptide forms, reducing quantitative precision. Only necessary if the protein is known or suspected to be modified.",
-    },
-    {
-        "code": "avoid_highly_hydrophobic_peptides",
-        "goal": "Exclude transmembrane or very hydrophobic regions.",
-        "rationale": "Hydrophobic peptides adhere to columns, elute poorly, and ionize inefficiently, lowering MS signal.",
-    },
-    {
-        "code": "avoid_long_homopolymeric_stretches",
+        "code": "contains_long_homopolymeric_stretch",
         "goal": "Avoid homopolymeric sequences.",
         "rationale": "Homopolymeric sequences produce weak, uninformative fragmentation spectra, reducing confidence in identification.",
     },
     {
-        "code": "prefer_typical_charge_states",
-        "goal": "Favor peptides that form 2+ or 3+ ions.",
-        "rationale": "Very basic peptides (4+ or higher) or neutral peptides (1+) fragment less predictably, decreasing identification reliability.",
+        "code": "contains_n_terminal_glutamine_motif",
+        "goal": "Exclude peptides with N-terminal glutamine.",
+        "rationale": "N-terminal glutamine cyclizes to pyroglutamate or converts to glutamate post-digestion, producing multiple forms that complicate quantification.",
+    },
+    {
+        "code": "contains_methionine",
+        "goal": "Avoid methionine-containing peptides.",
+        "rationale": "Methionine oxidizes readily during sample handling, generating multiple peptide species with different masses and retention times, reducing quantitative precision.",
+    },
+    {
+        "code": "contains_cysteine",
+        "goal": "Minimize peptides containing cysteine.",
+        "rationale": "Cysteine requires alkylation; incomplete or over-alkylation creates heterogeneous populations, reducing quantitative reliability.",
     },
 ]
 
@@ -180,3 +178,57 @@ def client(db_session: Session):
         yield test_client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="session")
+def bad_universal_peptide1() -> Any:
+    """
+    Create a peptide will not pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=1,
+        sequence=AminoAcidEnum.to_amino_acids("QCNGDPWWWWWWWWKPMCNGDPKPWWWWWWWWR"),
+    )
+
+
+@pytest.fixture(scope="session")
+def bad_universal_peptide2() -> Any:
+    """
+    Create a peptide will not pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=41,
+        sequence=AminoAcidEnum.to_amino_acids("QCNGDPWWWWWWWWKPMCNGDPKPWWWWWWWWR"),
+    )
+
+
+@pytest.fixture(scope="session")
+def good_universal_peptide() -> Any:
+    """
+    Create a peptide will pass most filters.
+    """
+    return PeptideDomainFactory.build(
+        position=34,
+        sequence=AminoAcidEnum.to_amino_acids("AEDIHYK"),
+    )
+
+
+@pytest.fixture(scope="session")
+def universal_protein(
+    bad_universal_peptide1: PeptideDomain,
+    good_universal_peptide: PeptideDomain,
+    bad_universal_peptide2: PeptideDomain,
+) -> ProteinDomain:
+    """
+    Create a universal protein domain that can be used across multiple tests.
+    """
+    sequence: list[AminoAcidEnum] = (
+        bad_universal_peptide1.sequence
+        + good_universal_peptide.sequence
+        + bad_universal_peptide2.sequence
+    )
+    protein = ProteinDomainFactory.build(
+        sequence=sequence,
+    )
+    protein.digest_sequence()
+    return protein

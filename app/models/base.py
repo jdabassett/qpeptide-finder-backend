@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import DateTime, String
@@ -15,13 +15,21 @@ class BaseModel(Base):
     __abstract__ = True
 
     id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4()), index=True
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+        index=True,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, nullable=False
+        DateTime(timezone=True),
+        default=lambda _: datetime.now(UTC),
+        nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+        DateTime(timezone=True),
+        default=lambda _: datetime.now(UTC),
+        onupdate=lambda _: datetime.now(UTC),
+        nullable=False,
     )
 
 
@@ -31,5 +39,8 @@ class BaseModelNoTimestamps(Base):
     __abstract__ = True
 
     id: Mapped[str] = mapped_column(
-        String(36), primary_key=True, default=lambda: str(uuid4()), index=True
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+        index=True,
     )
