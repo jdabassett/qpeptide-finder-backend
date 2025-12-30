@@ -2,8 +2,12 @@
 Factory for creating Digest test data.
 """
 
+import random
+import uuid
+
 from factory import SubFactory
 from factory.alchemy import SQLAlchemyModelFactory
+from factory.declarations import LazyAttribute
 from factory.faker import Faker
 
 from app.enums import AminoAcidEnum, DigestStatusEnum, ProteaseEnum
@@ -18,12 +22,14 @@ class DigestFactory(SQLAlchemyModelFactory):
         model = Digest
         sqlalchemy_session_persistence = "commit"
 
+    id = LazyAttribute(lambda obj: str(uuid.uuid4()))
     status = DigestStatusEnum.PROCESSING
     protease = ProteaseEnum.TRYPSIN
     protein_name = Faker("sentence", nb_words=3)
-    sequence = Faker(
-        "text",
-        max_nb_chars=200,
-        ext_word_list="".join([aa.value for aa in AminoAcidEnum]),
+    sequence = LazyAttribute(
+        lambda obj: "".join(
+            random.choice(list(AminoAcidEnum)).value
+            for _ in range(random.randint(20, 200))
+        )
     )
     user = SubFactory(UserFactory)

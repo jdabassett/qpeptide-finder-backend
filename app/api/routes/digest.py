@@ -33,6 +33,7 @@ def create_digest_job(
 
     Returns the digest job ID.
     """
+
     user = get_record_or_exception(session, User, email=job_request.user_email)
 
     request_within_digest_limit_or_exception(user.id, session)
