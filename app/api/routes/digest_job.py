@@ -8,8 +8,6 @@ from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
-    create_record,
-    get_record_or_exception,
     request_outside_digest_interval_or_exception,
     request_within_digest_limit_or_exception,
 )
@@ -19,11 +17,11 @@ from app.tasks import process_digest_job
 
 logger = logging.getLogger(__name__)
 
-digest_router = APIRouter(prefix="/digests", tags=["digests"])
+digest_router = APIRouter(prefix="/digest", tags=["digest"])
 
 
 @digest_router.post(
-    "/jobs",
+    "/job",
     response_model=DigestJobResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -39,28 +37,24 @@ def create_digest_job(
     """
     logger.info(f"Received digest job request: user_email={job_request.user_email}")
 
-    user = get_record_or_exception(session, User, email=job_request.user_email)
-
+    user: User = User.find_one_by_or_raise(session, email=job_request.user_email)
     request_within_digest_limit_or_exception(user.id, session)
-
     request_outside_digest_interval_or_exception(user.id, session)
 
     logger.debug(f"Digest checks passed for user_email={job_request.user_email}")
 
     try:
-        digest: Digest = create_record(
+        digest: Digest = Digest.create(
             session,
-            Digest,
+            flush=True,
             status=DigestStatusEnum.PROCESSING,
             user_id=user.id,
             protease=job_request.protease,
             protein_name=job_request.protein_name,
             sequence=job_request.sequence,
-            flush=True,
         )
 
         protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
-
         background_tasks.add_task(process_digest_job, protein_domain)
 
         logger.info(
@@ -88,12 +82,34 @@ def create_digest_job(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid digest job data: {str(e)}",
         ) from e
-    except Exception as e:
-        logger.exception(
-            f"Unexpected error in create_digest_job: user_email={job_request.user_email}, "
-            f"error={str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while creating digest job: {str(e)}",
-        ) from e
+
+
+# TODO ignore until other endpoints are working again
+# @digest_router.get(
+#     "/list/{email}",
+#     response_model=DigestListResponse,
+#     status_code=status.HTTP_200_OK,
+# )
+# def get_digests_by_email(
+#     email: str,
+#     session: Session = Depends(get_db),
+# ):
+#     """
+#     Get all digests for a user by email.
+
+#     - email: User's email address
+#     - Returns list of digests (without peptides or peptide_criteria)
+#     """
+#     logger.info(f"Received user delete request: email={email}")
+#     user: User = User.find_one_by_or_raise(session, email=email)
+
+#     # Query all digests for this user
+#     from sqlalchemy import select
+#     query = select(Digest).where(Digest.user_id == user.id)
+#     digests = session.scalars(query).all()
+
+#     logger.info(f"Found {len(digests)} digests for user_email={email}")
+
+#     return DigestListResponse(
+#         digests=[DigestResponse.model_validate(digest) for digest in digests]
+#     )
