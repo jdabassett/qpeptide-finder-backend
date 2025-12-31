@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health_router, users_router
-from app.api.routes.digest import digest_router
+from app.api import digest_router, health_router, users_router
 from app.core import settings
 
 app = FastAPI(title="QPeptide Cutter Backend", version="0.1.0")

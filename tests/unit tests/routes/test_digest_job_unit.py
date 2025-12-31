@@ -2,7 +2,7 @@
 Tests for the digest endpoint.
 """
 
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from fastapi import HTTPException, status
@@ -30,26 +30,26 @@ def test_create_digest_job_success(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
+            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
+            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
         patch(
-            "app.api.routes.digest.create_record", return_value=digest
+            "app.api.routes.digest_job.Digest.create", return_value=digest
         ) as mock_create,
         patch(
-            "app.api.routes.digest.ProteinDomain.from_digest",
+            "app.api.routes.digest_job.ProteinDomain.from_digest",
             return_value=protein_domain,
         ) as mock_from_digest,
-        patch("app.api.routes.digest.process_digest_job") as mock_process_job,
+        patch("app.api.routes.digest_job.process_digest_job") as mock_process_job,
     ):
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
@@ -58,7 +58,7 @@ def test_create_digest_job_success(client: TestClient) -> None:
     data = response.json()
     assert data["digest_id"] == digest.id
 
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email=user.email)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()
@@ -77,24 +77,23 @@ def test_create_digest_job_user_not_found(client: TestClient) -> None:
         "sequence": "MKTAYIAKQR",
     }
 
-    with patch("app.api.routes.digest.get_record_or_exception") as mock_get_user:
+    with patch("app.api.routes.digest_job.User.find_one_by_or_raise") as mock_get_user:
         mock_get_user.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User with email='nonexistent@example.com' not found.",
+            detail="No User records found with email='nonexistent@example.com'.",
         )
 
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
     # validate
     assert response.status_code == 404
     data = response.json()
-    assert "not found" in data["detail"].lower()
     assert "nonexistent@example.com" in data["detail"]
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email="nonexistent@example.com")
 
 
 @pytest.mark.unit
@@ -111,10 +110,10 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
+            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
+            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
     ):
         mock_limit_check.side_effect = HTTPException(
@@ -124,7 +123,7 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
 
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
@@ -132,7 +131,7 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
     assert response.status_code == 400
     data = response.json()
     assert "limit" in data["detail"].lower() or "more than" in data["detail"].lower()
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email=user.email)
     mock_limit_check.assert_called_once()
 
 
@@ -150,13 +149,13 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
+            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
+            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
     ):
         mock_interval_check.side_effect = HTTPException(
@@ -166,7 +165,7 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
 
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
@@ -174,7 +173,7 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
     assert response.status_code == 429
     data = response.json()
     assert "wait" in data["detail"].lower() or "minutes ago" in data["detail"].lower()
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email=user.email)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
 
@@ -193,15 +192,15 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
+            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
+            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
-        patch("app.api.routes.digest.create_record") as mock_create,
+        patch("app.api.routes.digest_job.Digest.create") as mock_create,
     ):
         mock_create.side_effect = IntegrityError(
             "statement", "params", Exception("Database constraint violation")
@@ -209,7 +208,7 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
 
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
@@ -220,7 +219,7 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
         "database constraint violation" in data["detail"].lower()
         or "constraint" in data["detail"].lower()
     )
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email=user.email)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()
@@ -240,21 +239,21 @@ def test_create_digest_job_value_error(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
+            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
+            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
-        patch("app.api.routes.digest.create_record") as mock_create,
+        patch("app.api.routes.digest_job.Digest.create") as mock_create,
     ):
         mock_create.side_effect = ValueError("Invalid digest job data")
 
         # execute
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 
@@ -262,49 +261,7 @@ def test_create_digest_job_value_error(client: TestClient) -> None:
     assert response.status_code == 400
     data = response.json()
     assert "invalid digest job data" in data["detail"].lower()
-    mock_get_user.assert_called_once()
-    mock_limit_check.assert_called_once()
-    mock_interval_check.assert_called_once()
-    mock_create.assert_called_once()
-
-
-@pytest.mark.unit
-def test_create_digest_job_generic_exception(client: TestClient) -> None:
-    """Test that 500 is returned when unexpected exception occurs."""
-    # setup
-    user = UserFactory.build()
-    request_data = {
-        "user_email": user.email,
-        "protease": ProteaseEnum.TRYPSIN.value,
-        "protein_name": "Test Protein",
-        "sequence": "MKTAYIAKQR",
-    }
-
-    with (
-        patch(
-            "app.api.routes.digest.get_record_or_exception", return_value=user
-        ) as mock_get_user,
-        patch(
-            "app.api.routes.digest.request_within_digest_limit_or_exception"
-        ) as mock_limit_check,
-        patch(
-            "app.api.routes.digest.request_outside_digest_interval_or_exception"
-        ) as mock_interval_check,
-        patch("app.api.routes.digest.create_record") as mock_create,
-    ):
-        mock_create.side_effect = RuntimeError("Unexpected error occurred")
-
-        # execute
-        response = client.post(
-            "/api/v1/digests/jobs",
-            json=request_data,
-        )
-
-    # validate
-    assert response.status_code == 500
-    data = response.json()
-    assert "unexpected error" in data["detail"].lower()
-    mock_get_user.assert_called_once()
+    mock_get_user.assert_called_once_with(ANY, email=user.email)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()

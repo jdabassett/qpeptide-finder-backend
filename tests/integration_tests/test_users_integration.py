@@ -65,6 +65,7 @@ def test_update_user(client: TestClient, db_session: Session):
     assert "updated_at" in data
 
     user = db_session.query(User).filter(User.email == user_request.email).first()
+
     assert user is not None
     assert user.id == user_record.id
     assert user.email == user_record.email
@@ -125,7 +126,6 @@ def test_delete_user_by_email_no_user_found(client: TestClient, db_session: Sess
     assert "detail" in response_data
     assert "User" in response_data["detail"]
     assert "email_wont_be_found@email.com" in response_data["detail"]
-    assert "not found" in response_data["detail"].lower()
 
     user_retrieved = db_session.query(User).first()
     assert user_retrieved is not None

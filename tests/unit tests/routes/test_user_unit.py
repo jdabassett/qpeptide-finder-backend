@@ -27,10 +27,10 @@ def test_create_user(client: TestClient) -> None:
     )
 
     with (
-        patch("app.api.routes.users.get_record", return_value=None) as mock_get_record,
         patch(
-            "app.api.routes.users.create_record", return_value=new_user
-        ) as mock_create_record,
+            "app.api.routes.users.User.find_one_by", return_value=None
+        ) as mock_find_one_by,
+        patch("app.api.routes.users.User.create", return_value=new_user) as mock_create,
     ):
         # execute
         response = client.post(
@@ -45,8 +45,8 @@ def test_create_user(client: TestClient) -> None:
     assert data["email"] == user_request.email
     assert data["id"] == new_user.id
 
-    mock_get_record.assert_called_once()
-    mock_create_record.assert_called_once()
+    mock_find_one_by.assert_called_once_with(ANY, email=user_request.email)
+    mock_create.assert_called_once()
 
 
 @pytest.mark.unit
@@ -71,10 +71,12 @@ def test_update_user(client: TestClient) -> None:
     )
 
     with (
-        patch("app.api.routes.users.get_record", return_value=None) as mock_get_record,
         patch(
-            "app.api.routes.users.create_record", return_value=updated_user
-        ) as mock_update_record,
+            "app.api.routes.users.User.find_one_by", return_value=existing_user
+        ) as mock_find_one_by,
+        patch(
+            "app.api.routes.users.User.update", return_value=updated_user
+        ) as mock_update,
     ):
         # execute
         response = client.post(
@@ -90,8 +92,15 @@ def test_update_user(client: TestClient) -> None:
     assert data["id"] == existing_user.id
     assert data["username"] != "foobar"
 
-    mock_get_record.assert_called_once()
-    mock_update_record.assert_called_once()
+    mock_find_one_by.assert_called_once_with(ANY, email=user_request.email)
+    mock_update.assert_called_once_with(
+        ANY,
+        existing_user,
+        values={
+            "username": user_request.username,
+            "updated_at": ANY,
+        },
+    )
 
 
 @pytest.mark.unit
@@ -103,9 +112,9 @@ def test_delete_user_by_email_success(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.users.get_record_or_exception", return_value=user
-        ) as mock_get_record,
-        patch("app.api.routes.users.delete_record") as mock_delete_record,
+            "app.api.routes.users.User.find_one_by_or_raise", return_value=user
+        ) as mock_find_one,
+        patch("app.api.routes.users.User.delete") as mock_delete,
     ):
         # execute
         response = client.delete(f"/api/v1/users/email/{user_email}")
@@ -114,18 +123,18 @@ def test_delete_user_by_email_success(client: TestClient) -> None:
     assert response.status_code == 204
     assert response.content == b""
 
-    mock_get_record.assert_called_once()
-    mock_delete_record.assert_called_once_with(ANY, user)
+    mock_find_one.assert_called_once_with(ANY, email=user_email)
+    mock_delete.assert_called_once_with(ANY, user)
 
 
 @pytest.mark.unit
 def test_delete_user_by_email_no_user_found(client: TestClient) -> None:
     """Test delete user when user is not found with all functions patched."""
     # setup
-    with patch("app.api.routes.users.get_record_or_exception") as mock_get_record:
-        mock_get_record.side_effect = HTTPException(
+    with patch("app.api.routes.users.User.find_one_by_or_raise") as mock_find_one:
+        mock_find_one.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User with email='email_wont_be_found@email.com' not found.",
+            detail="No User records found with email='email_wont_be_found@email.com'.",
         )
 
         # execute
@@ -137,6 +146,5 @@ def test_delete_user_by_email_no_user_found(client: TestClient) -> None:
     assert "detail" in response_data
     assert "User" in response_data["detail"]
     assert "email_wont_be_found@email.com" in response_data["detail"]
-    assert "not found" in response_data["detail"].lower()
 
-    mock_get_record.assert_called_once()
+    mock_find_one.assert_called_once_with(ANY, email="email_wont_be_found@email.com")

@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.enums import AminoAcidEnum, ProteaseEnum
 
@@ -54,3 +56,38 @@ class DigestJobResponse(BaseModel):
     """Schema for digest job creation response."""
 
     digest_id: str = Field(..., description="ID of the created digest job")
+
+
+class DigestListRequest(BaseModel):
+    """Schema for requesting digests by user email."""
+
+    email: EmailStr = Field(..., description="User email address")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "email": "user@example.com",
+            }
+        }
+    }
+
+
+class DigestResponse(BaseModel):
+    """Schema for digest response (without peptides or peptide_criteria)."""
+
+    id: str = Field(..., description="Digest ID")
+    status: str = Field(..., description="Digest status")
+    user_id: str = Field(..., description="User ID")
+    protease: str = Field(..., description="Protease used")
+    protein_name: str | None = Field(None, description="Protein name")
+    sequence: str = Field(..., description="Protein sequence")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    updated_at: datetime = Field(..., description="Last update timestamp")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DigestListResponse(BaseModel):
+    """Schema for list of digests response."""
+
+    digests: list[DigestResponse] = Field(..., description="List of digests")

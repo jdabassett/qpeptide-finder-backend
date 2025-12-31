@@ -11,7 +11,6 @@ from app.db.session import SessionLocal
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import save_peptides_with_criteria
-from app.helpers.database import get_record, update_record
 from app.models import Digest
 from app.services import (
     ContainsAsparagineGlycineMotifFilter,
@@ -71,8 +70,7 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
         logger.info(
             f"Starting digest job processing for digest_id: {protein_domain.digest_id}"
         )
-
-        digest = get_record(session, Digest, id=protein_domain.digest_id)
+        digest: Digest | None = Digest.find_one_by(session, id=protein_domain.digest_id)
 
         if not digest:
             logger.error(
@@ -86,6 +84,7 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
         logger.info(f"Digested protein for digest_id: {protein_domain.digest_id}")
 
         evaluator = create_default_criteria_evaluator()
+
         num_peptides_before = len(protein_domain.peptides)
         filter_start_time = time.perf_counter()
         evaluator.evaluate_peptides(protein_domain)
@@ -105,11 +104,10 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
 
         logger.info(f"Saved all peptides for digest_id: {protein_domain.digest_id}")
 
-        update_record(
+        Digest.update(
             session,
             digest,
-            status=DigestStatusEnum.COMPLETED,
-            refresh=True,
+            values={"status": DigestStatusEnum.COMPLETED},
         )
 
         logger.info(
@@ -124,13 +122,11 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
         )
 
         try:
-            digest = get_record(session, Digest, id=protein_domain.digest_id)
-            if digest:
-                update_record(
+            if digest is not None:
+                Digest.update(
                     session,
                     digest,
-                    status=DigestStatusEnum.FAILED,
-                    refresh=True,
+                    values={"status": DigestStatusEnum.FAILED},
                 )
         except Exception as update_error:
             logger.error(

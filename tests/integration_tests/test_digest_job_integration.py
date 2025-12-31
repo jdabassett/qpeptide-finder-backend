@@ -17,7 +17,9 @@ from tests.factories import UserFactory
 
 @pytest.mark.integration
 def test_create_digest_job_integration(
-    universal_protein: ProteinDomain, client: TestClient, db_session: Session
+    universal_protein: ProteinDomain,
+    client: TestClient,
+    db_session: Session,
 ) -> None:
     """Test creating a digest job with real database operations."""
     # setup
@@ -37,13 +39,13 @@ def test_create_digest_job_integration(
 
     # execute
     with (
-        patch("app.api.routes.digest.request_outside_digest_interval_or_exception"),
+        patch("app.api.routes.digest_job.request_outside_digest_interval_or_exception"),
         patch("app.tasks.digest_task.SessionLocal") as mock_session_local,
     ):
         mock_session_local.return_value = db_session
 
         response = client.post(
-            "/api/v1/digests/jobs",
+            "/api/v1/digest/job",
             json=request_data,
         )
 

@@ -82,7 +82,7 @@ class PeptideDomain(BaseModel):
         window_size = settings.MAX_HYDROPHOBICITY_WINDOW
 
         if len(kd_values) <= window_size:
-            self.max_kd_score = sum(kd_values) / len(kd_values)
+            self.max_kd_score = round(sum(kd_values) / len(kd_values), 2)
             return self.max_kd_score
 
         max_score = float("-inf")
