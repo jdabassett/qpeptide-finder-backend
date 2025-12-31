@@ -21,12 +21,12 @@ def test_delete_digest_by_id_success(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_find_user,
         patch(
-            "app.api.routes.digest_job.Digest.find_one_by_or_raise", return_value=digest
+            "app.api.routes.digest.Digest.find_one_by_or_raise", return_value=digest
         ) as mock_find_digest,
-        patch("app.api.routes.digest_job.Digest.delete") as mock_delete,
+        patch("app.api.routes.digest.Digest.delete") as mock_delete,
     ):
         # execute
         response = client.delete(f"/api/v1/digest/delete/{user.email}/{digest.id}")
@@ -51,7 +51,7 @@ def test_delete_digest_by_id_user_not_found(client: TestClient) -> None:
     email = "nonexistent@example.com"
     digest_id = "some-digest-id"
 
-    with patch("app.api.routes.digest_job.User.find_one_by_or_raise") as mock_find_user:
+    with patch("app.api.routes.digest.User.find_one_by_or_raise") as mock_find_user:
         mock_find_user.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No User records found with email='{email}'.",
@@ -79,11 +79,9 @@ def test_delete_digest_by_id_digest_not_found(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_find_user,
-        patch(
-            "app.api.routes.digest_job.Digest.find_one_by_or_raise"
-        ) as mock_find_digest,
+        patch("app.api.routes.digest.Digest.find_one_by_or_raise") as mock_find_digest,
     ):
         mock_find_digest.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -113,12 +111,12 @@ def test_delete_digest_by_id_integrity_error(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_find_user,
         patch(
-            "app.api.routes.digest_job.Digest.find_one_by_or_raise", return_value=digest
+            "app.api.routes.digest.Digest.find_one_by_or_raise", return_value=digest
         ) as mock_find_digest,
-        patch("app.api.routes.digest_job.Digest.delete") as mock_delete,
+        patch("app.api.routes.digest.Digest.delete") as mock_delete,
     ):
         mock_delete.side_effect = IntegrityError(
             statement="DELETE FROM digests",
