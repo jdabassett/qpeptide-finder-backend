@@ -30,22 +30,22 @@ def test_create_digest_job_success(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
+            "app.api.routes.digest.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
         patch(
-            "app.api.routes.digest_job.Digest.create", return_value=digest
+            "app.api.routes.digest.Digest.create", return_value=digest
         ) as mock_create,
         patch(
-            "app.api.routes.digest_job.ProteinDomain.from_digest",
+            "app.api.routes.digest.ProteinDomain.from_digest",
             return_value=protein_domain,
         ) as mock_from_digest,
-        patch("app.api.routes.digest_job.process_digest_job") as mock_process_job,
+        patch("app.api.routes.digest.process_digest_job") as mock_process_job,
     ):
         # execute
         response = client.post(
@@ -77,7 +77,7 @@ def test_create_digest_job_user_not_found(client: TestClient) -> None:
         "sequence": "MKTAYIAKQR",
     }
 
-    with patch("app.api.routes.digest_job.User.find_one_by_or_raise") as mock_get_user:
+    with patch("app.api.routes.digest.User.find_one_by_or_raise") as mock_get_user:
         mock_get_user.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No User records found with email='nonexistent@example.com'.",
@@ -110,10 +110,10 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
+            "app.api.routes.digest.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
     ):
         mock_limit_check.side_effect = HTTPException(
@@ -149,13 +149,13 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
+            "app.api.routes.digest.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
     ):
         mock_interval_check.side_effect = HTTPException(
@@ -192,15 +192,15 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
+            "app.api.routes.digest.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
-        patch("app.api.routes.digest_job.Digest.create") as mock_create,
+        patch("app.api.routes.digest.Digest.create") as mock_create,
     ):
         mock_create.side_effect = IntegrityError(
             "statement", "params", Exception("Database constraint violation")
@@ -239,15 +239,15 @@ def test_create_digest_job_value_error(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_get_user,
         patch(
-            "app.api.routes.digest_job.request_within_digest_limit_or_exception"
+            "app.api.routes.digest.request_within_digest_limit_or_exception"
         ) as mock_limit_check,
         patch(
-            "app.api.routes.digest_job.request_outside_digest_interval_or_exception"
+            "app.api.routes.digest.request_outside_digest_interval_or_exception"
         ) as mock_interval_check,
-        patch("app.api.routes.digest_job.Digest.create") as mock_create,
+        patch("app.api.routes.digest.Digest.create") as mock_create,
     ):
         mock_create.side_effect = ValueError("Invalid digest job data")
 

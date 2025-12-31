@@ -21,10 +21,10 @@ def test_get_digests_by_email_success(client: TestClient) -> None:
 
     with (
         patch(
-            "app.api.routes.digest_job.User.find_one_by_or_raise", return_value=user
+            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
         ) as mock_find_user,
         patch(
-            "app.api.routes.digest_job.Digest.find_by", return_value=digests
+            "app.api.routes.digest.Digest.find_by", return_value=digests
         ) as mock_find_digests,
     ):
         # execute

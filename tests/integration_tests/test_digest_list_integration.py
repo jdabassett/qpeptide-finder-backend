@@ -52,7 +52,6 @@ def test_get_digests_by_email_success(
     response = client.get(f"/api/v1/digest/list/{user_email}")
 
     # validate
-    # breakpoint()
     assert response.status_code == 200
     data = response.json()
     assert "digests" in data
