@@ -93,11 +93,3 @@ def delete_user_by_email(email: str, session: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to delete user due to database constraint violation. Error: {str(e)}",
         ) from e
-    except Exception as e:
-        logger.exception(
-            f"Unexpected error while deleting user: email={email}, error={str(e)}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred while deleting user: {str(e)}",
-        ) from e

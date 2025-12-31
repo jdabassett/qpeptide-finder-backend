@@ -107,11 +107,55 @@ def get_digests_by_email(
     logger.info(f"Received digest list request: email={email}")
 
     user: User = User.find_one_by_or_raise(session, email=email)
-    # breakpoint()
+
     digests: list[Digest] = Digest.find_by(session, user_id=user.id)
-    # breakpoint()
+
     logger.info(f"Found {len(digests)} digests for user_email={email}")
 
     return DigestListResponse(
         digests=[DigestResponse.model_validate(digest) for digest in digests]
     )
+
+
+@digest_router.delete(
+    "/delete/{email}/{digest_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_digest_by_id(
+    email: str,
+    digest_id: str,
+    session: Session = Depends(get_db),
+):
+    """
+    Delete a digest by ID for a specific user.
+
+    - email: User's email address
+    - digest_id: Digest ID to delete
+    - Returns 204 No Content on success
+    - Returns 404 if user or digest not found, or if digest doesn't belong to user
+    """
+    logger.info(f"Received digest delete request: email={email}, digest_id={digest_id}")
+
+    user: User = User.find_one_by_or_raise(session, email=email)
+
+    digest: Digest = Digest.find_one_by_or_raise(
+        session,
+        user_id=user.id,
+        id=digest_id,
+    )
+
+    try:
+        Digest.delete(session, digest)
+        logger.info(
+            f"Successfully deleted digest: email={email}, digest_id={digest_id}"
+        )
+        return
+    except IntegrityError as e:
+        logger.error(
+            f"Database constraint violation while deleting digest: "
+            f"email={email}, digest_id={digest_id}, error={str(e)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to delete digest due to database constraint violation. Error: {str(e)}",
+        ) from e
