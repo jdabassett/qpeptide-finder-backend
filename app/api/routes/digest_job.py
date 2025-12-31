@@ -12,7 +12,12 @@ from app.helpers import (
     request_within_digest_limit_or_exception,
 )
 from app.models import Digest, User
-from app.schemas.digest import DigestJobRequest, DigestJobResponse
+from app.schemas.digest import (
+    DigestJobRequest,
+    DigestJobResponse,
+    DigestListResponse,
+    DigestResponse,
+)
 from app.tasks import process_digest_job
 
 logger = logging.getLogger(__name__)
@@ -84,32 +89,29 @@ def create_digest_job(
         ) from e
 
 
-# TODO ignore until other endpoints are working again
-# @digest_router.get(
-#     "/list/{email}",
-#     response_model=DigestListResponse,
-#     status_code=status.HTTP_200_OK,
-# )
-# def get_digests_by_email(
-#     email: str,
-#     session: Session = Depends(get_db),
-# ):
-#     """
-#     Get all digests for a user by email.
+@digest_router.get(
+    "/list/{email}",
+    response_model=DigestListResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_digests_by_email(
+    email: str,
+    session: Session = Depends(get_db),
+):
+    """
+    Get all digests for a user by email.
 
-#     - email: User's email address
-#     - Returns list of digests (without peptides or peptide_criteria)
-#     """
-#     logger.info(f"Received user delete request: email={email}")
-#     user: User = User.find_one_by_or_raise(session, email=email)
+    - email: User's email address
+    - Returns list of digests (without peptides or peptide_criteria)
+    """
+    logger.info(f"Received digest list request: email={email}")
 
-#     # Query all digests for this user
-#     from sqlalchemy import select
-#     query = select(Digest).where(Digest.user_id == user.id)
-#     digests = session.scalars(query).all()
+    user: User = User.find_one_by_or_raise(session, email=email)
+    # breakpoint()
+    digests: list[Digest] = Digest.find_by(session, user_id=user.id)
+    # breakpoint()
+    logger.info(f"Found {len(digests)} digests for user_email={email}")
 
-#     logger.info(f"Found {len(digests)} digests for user_email={email}")
-
-#     return DigestListResponse(
-#         digests=[DigestResponse.model_validate(digest) for digest in digests]
-#     )
+    return DigestListResponse(
+        digests=[DigestResponse.model_validate(digest) for digest in digests]
+    )
