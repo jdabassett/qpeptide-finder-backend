@@ -1,9 +1,10 @@
 # app/models/criteria.py
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Integer, String, Text, asc, select
+from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from app.enums import CriteriaEnum
 from app.models.base import BaseModelNoTimestamps
@@ -47,3 +48,18 @@ class Criteria(BaseModelNoTimestamps):
     peptides: Mapped[list["PeptideCriteria"]] = relationship(
         back_populates="criteria",
     )
+
+    @classmethod
+    @lru_cache(maxsize=1)
+    def get_all_ordered_by_rank(cls, session: Session) -> list["Criteria"]:
+        """
+        Get all criteria ordered by rank (cached).
+
+        Args:
+            session: Database session
+
+        Returns:
+            List of all criteria ordered by rank (ascending)
+        """
+        query = select(cls).order_by(asc(cls.rank))
+        return list(session.scalars(query).all())

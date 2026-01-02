@@ -15,6 +15,7 @@ class PeptideDomain(BaseModel):
     pI: float | None = Field(default=None)
     charge_state: int | None = Field(default=None)
     max_kd_score: float | None = Field(default=None)
+    rank: int | None = Field(default=None)
 
     @property
     def length(self) -> int:

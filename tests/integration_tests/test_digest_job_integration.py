@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import asc
 from sqlalchemy.orm import Session
 
 from app.domain import ProteinDomain
@@ -25,10 +26,9 @@ def test_create_digest_job_integration(
     # setup
     user = UserFactory.create()
     user_id = user.id
-    user_email = user.email
 
     request_data = {
-        "user_email": user_email,
+        "user_id": user_id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": universal_protein.sequence_as_str,
@@ -71,7 +71,7 @@ def test_create_digest_job_integration(
     peptides = (
         db_session.query(Peptide)
         .filter(Peptide.digest_id == digest_id)
-        .order_by(Peptide.position)
+        .order_by(asc(Peptide.rank))
         .all()
     )
 
@@ -93,6 +93,7 @@ def test_create_digest_job_integration(
     }
 
     for i, peptide in enumerate(peptides):
+        assert peptide.rank is not None and peptide.rank == (i + 1)
         assert peptide.pi is not None and isinstance(peptide.pi, float)
         assert peptide.charge_state is not None and isinstance(
             peptide.charge_state, int
@@ -100,7 +101,6 @@ def test_create_digest_job_integration(
         assert peptide.max_kd_score is not None and isinstance(
             peptide.max_kd_score, float
         )
-        assert peptide.sequence == universal_protein.peptides[i].sequence_as_str
 
         criteria = (
             db_session.query(PeptideCriteria)
@@ -110,7 +110,7 @@ def test_create_digest_job_integration(
 
         criteria_codes = {c.criteria.code for c in criteria}
 
-        if i == 0 or i == 2:
+        if i in {1, 2}:
             assert criteria_codes == expected_bad_peptide_criteria
-        elif i == 1:
+        elif i == 0:
             assert criteria_codes == {CriteriaEnum.OUTLIER_HYDROPHOBICITY}

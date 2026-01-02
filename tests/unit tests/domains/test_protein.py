@@ -6,7 +6,7 @@ from tests.factories import DigestFactory, ProteinDomainFactory
 
 
 @pytest.mark.unit
-def test_digest_sequence_successful():
+def test_digest_sequence_successful() -> None:
     """Test that digest_sequence correctly digests a protein sequence."""
     # setup
     protein_domain: ProteinDomain = ProteinDomainFactory.create(
@@ -65,7 +65,7 @@ def test_protein_domain_sequence_as_str_property() -> None:
 def test_protein_domain_from_digest(db_session) -> None:
     """Test that from_digest creates ProteinDomain from Digest model."""
     # setup
-    digest = DigestFactory.build(
+    digest = DigestFactory.create(
         sequence="MKTAYIAKQR",
         protease=ProteaseEnum.TRYPSIN,
     )

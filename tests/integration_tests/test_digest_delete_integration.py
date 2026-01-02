@@ -19,7 +19,6 @@ def test_delete_digest_by_id_success(
     """Test successfully deleting a digest by ID with real database operations."""
     # setup
     user = UserFactory.create()
-    user_email = user.email
 
     digest1 = DigestFactory.create(
         user=user,
@@ -37,7 +36,7 @@ def test_delete_digest_by_id_success(
     db_session.expire_all()
 
     # execute
-    response = client.delete(f"/api/v1/digest/delete/{user_email}/{digest1.id}")
+    response = client.delete(f"/api/v1/digest/delete/{user.id}/{digest1.id}")
 
     # validate
     assert response.status_code == 204
@@ -61,11 +60,15 @@ def test_delete_digest_by_id_user_not_found(
 ) -> None:
     """Test that 404 is returned when user is not found."""
     # setup
-    nonexistent_email = "nonexistent@example.com"
-    digest_id = "some-digest-id"
+    nonexistent_user_id = "fc502bbe-5a1b-4f99-b716-e1970db2aef7"
+    digest = DigestFactory.create(
+        status=DigestStatusEnum.COMPLETED,
+        protein_name="Test Protein 1",
+        sequence="MKTAYIAKQR",
+    )
 
     # execute
-    response = client.delete(f"/api/v1/digest/delete/{nonexistent_email}/{digest_id}")
+    response = client.delete(f"/api/v1/digest/delete/{nonexistent_user_id}/{digest.id}")
 
     # validate
     assert response.status_code == 404
@@ -78,13 +81,10 @@ def test_delete_digest_by_id_digest_not_found(
     """Test that 404 is returned when digest is not found."""
     # setup
     user = UserFactory.create()
-    user_email = user.email
-    nonexistent_digest_id = "nonexistent-digest-id"
+    nonexistent_digest_id = "fc502bbe-5a1b-4f99-b716-e1970db2aef7"
 
     # execute
-    response = client.delete(
-        f"/api/v1/digest/delete/{user_email}/{nonexistent_digest_id}"
-    )
+    response = client.delete(f"/api/v1/digest/delete/{user.id}/{nonexistent_digest_id}")
 
     # validate
     assert response.status_code == 404
@@ -110,7 +110,7 @@ def test_delete_digest_by_id_digest_belongs_to_other_user(
     db_session.expire_all()
 
     # execute
-    response = client.delete(f"/api/v1/digest/delete/{user1.email}/{user2_digest.id}")
+    response = client.delete(f"/api/v1/digest/delete/{user1.id}/{user2_digest.id}")
 
     # validate
     assert response.status_code == 404

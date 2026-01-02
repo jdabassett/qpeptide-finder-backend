@@ -46,6 +46,7 @@ def save_peptides_with_criteria(
 
             peptide: Peptide = Peptide.create(
                 session,
+                rank=peptide_domain.rank,
                 digest_id=digest_id,
                 sequence=peptide_domain.sequence_as_str,
                 position=peptide_domain.position,

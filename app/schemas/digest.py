@@ -1,19 +1,18 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.enums import AminoAcidEnum, ProteaseEnum
+from app.models import Criteria, Peptide
 
 
 class DigestJobRequest(BaseModel):
     """Schema for creating a new digest job request."""
 
-    user_email: EmailStr = Field(..., description="User email address")
+    user_id: str = Field(..., description="User's id")
     protease: ProteaseEnum = Field(..., description="Protease used for digest")
 
-    protein_name: str = Field(
-        ..., min_length=1, max_length=255, description="Protein name"
-    )
+    protein_name: str | None = Field(None, max_length=255, description="Protein name")
     sequence: str = Field(
         ..., min_length=1, max_length=3000, description="Protein sequence"
     )
@@ -43,7 +42,7 @@ class DigestJobRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "user_email": "user@example.com",
+                "user_id": "fc502bbe-5a1b-4f99-b716-e1970db2aef7",
                 "protein_name": "Example Protein",
                 "protein_sequence": "MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQAPILSRVGDGTQDNLSGAEKAVQVKVKALPDAQFEVVHSLAKWKRQTLGQHDFSAGEGLYTHMKALRPDEDRLSPLHSVYVDQWDWYVYSQIAEEYEVHSSFLK",
                 "protease": "trypsin",
@@ -59,14 +58,14 @@ class DigestJobResponse(BaseModel):
 
 
 class DigestListRequest(BaseModel):
-    """Schema for requesting digests by user email."""
+    """Schema for requesting digests by user id."""
 
-    email: EmailStr = Field(..., description="User email address")
+    user_id: str = Field(..., description="User id")
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "email": "user@example.com",
+                "user_id": "fc502bbe-5a1b-4f99-b716-e1970db2aef7",
             }
         }
     }
@@ -91,3 +90,85 @@ class DigestListResponse(BaseModel):
     """Schema for list of digests response."""
 
     digests: list[DigestResponse] = Field(..., description="List of digests")
+
+
+class CriteriaResponse(BaseModel):
+    """Schema for criteria response."""
+
+    code: str = Field(..., description="Criteria code (enum value)")
+    goal: str = Field(..., description="Goal of the criteria")
+    rationale: str = Field(..., description="Rationale for the criteria")
+    rank: int = Field(..., description="Rank/priority of the criteria")
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PeptideResponse(BaseModel):
+    """Schema for peptide response with criteria codes."""
+
+    id: str = Field(..., description="Peptide ID")
+    sequence: str = Field(..., description="Peptide sequence")
+    position: int = Field(..., description="Position in the protein")
+    pi: float | None = Field(None, description="Isoelectric point")
+    charge_state: int | None = Field(None, description="Charge state")
+    max_kd_score: float | None = Field(None, description="Max Kyte-Doolittle score")
+    rank: int = Field(..., description="Peptide rank (lower is better)")
+    criteria_ranks: list[int] = Field(
+        default_factory=list, description="List of criteria ranks this peptide matches"
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DigestPeptidesResponse(BaseModel):
+    """Schema for digest peptides response."""
+
+    digest_id: str = Field(..., description="Digest ID")
+    peptides: list[PeptideResponse] = Field(
+        ..., description="List of peptides ordered by rank"
+    )
+    criteria: list[CriteriaResponse] = Field(
+        ..., description="List of all available criteria"
+    )
+
+    @classmethod
+    def from_peptides(
+        cls,
+        digest_id: str,
+        peptides: list["Peptide"],  # type: ignore
+        all_criteria: list["Criteria"],  # type: ignore
+    ) -> "DigestPeptidesResponse":
+        """
+        Create a DigestPeptidesResponse from a list of peptide records.
+
+        Args:
+            digest_id: The digest ID
+            peptides: List of Peptide model instances
+            all_criteria: List of all Criteria model instances
+
+        Returns:
+            DigestPeptidesResponse instance
+        """
+        peptide_responses = []
+        for peptide in peptides:
+            criteria_ranks = [pc.criteria.rank for pc in peptide.criteria]
+            criteria_ranks.sort()
+
+            peptide_responses.append(
+                PeptideResponse(
+                    id=peptide.id,
+                    sequence=peptide.sequence,
+                    position=peptide.position,
+                    pi=peptide.pi,
+                    charge_state=peptide.charge_state,
+                    max_kd_score=peptide.max_kd_score,
+                    rank=peptide.rank,
+                    criteria_ranks=criteria_ranks,
+                )
+            )
+
+        return cls(
+            digest_id=digest_id,
+            peptides=peptide_responses,
+            criteria=[CriteriaResponse.model_validate(c) for c in all_criteria],
+        )

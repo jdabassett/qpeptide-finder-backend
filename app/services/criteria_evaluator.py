@@ -57,3 +57,17 @@ class CriteriaEvaluator:
             for filter_instance in self.filters:
                 if filter_instance.evaluate(peptide, protein):
                     peptide.add_criteria(filter_instance.criteria_enum)
+
+        weights = CriteriaEnum.criteria_weights()
+        peptide_weights: list[tuple[PeptideDomain, float]] = []
+
+        for peptide in protein.peptides:
+            total_weight = 0.0
+            for criteria_enum in peptide.criteria:
+                total_weight += weights.get(criteria_enum, 0.0)
+            peptide_weights.append((peptide, total_weight))
+
+        peptide_weights.sort(key=lambda x: x[1])
+
+        for rank, (peptide, _) in enumerate(peptide_weights, start=1):
+            peptide.rank = rank

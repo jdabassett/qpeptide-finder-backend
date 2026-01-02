@@ -12,14 +12,13 @@ from tests.factories import DigestFactory, UserFactory
 
 
 @pytest.mark.integration
-def test_get_digests_by_email_success(
+def test_get_digests_by_id_success(
     client: TestClient,
     db_session: Session,
 ) -> None:
-    """Test successfully getting digests by email with real database operations."""
+    """Test successfully getting digests by user id with real database operations."""
     # setup
     user = UserFactory.create()
-    user_email = user.email
 
     digest1 = DigestFactory.create(
         user=user,
@@ -42,14 +41,14 @@ def test_get_digests_by_email_success(
 
     other_user = UserFactory.create()
     other_digest = DigestFactory.create(
-        user_id=other_user.id,
+        user=other_user,
         status=DigestStatusEnum.COMPLETED,
     )
 
     db_session.expire_all()
 
     # execute
-    response = client.get(f"/api/v1/digest/list/{user_email}")
+    response = client.get(f"/api/v1/digest/list/{user.id}")
 
     # validate
     assert response.status_code == 200
@@ -74,17 +73,16 @@ def test_get_digests_by_email_success(
 
 
 @pytest.mark.integration
-def test_get_digests_by_email_empty_list(
+def test_get_digests_by_id_empty_list(
     client: TestClient,
     db_session: Session,
 ) -> None:
     """Test getting digests when user has no digests."""
     # setup
     user = UserFactory.create()
-    user_email = user.email
 
     # execute
-    response = client.get(f"/api/v1/digest/list/{user_email}")
+    response = client.get(f"/api/v1/digest/list/{user.id}")
 
     # validate
     assert response.status_code == 200
@@ -94,27 +92,3 @@ def test_get_digests_by_email_empty_list(
 
     db_digests = db_session.query(Digest).filter(Digest.user_id == user.id).all()
     assert len(db_digests) == 0
-
-
-@pytest.mark.integration
-def test_get_digests_by_email_user_not_found(
-    client: TestClient,
-    db_session: Session,
-) -> None:
-    """Test that 404 is returned when user is not found."""
-    # setup
-    nonexistent_email = "nonexistent@example.com"
-
-    # execute
-    response = client.get(f"/api/v1/digest/list/{nonexistent_email}")
-
-    # validate
-    assert response.status_code == 404
-    data = response.json()
-    assert "detail" in data
-    assert "User" in data["detail"]
-    assert nonexistent_email in data["detail"]
-    assert (
-        "records found" in data["detail"].lower()
-        or "not found" in data["detail"].lower()
-    )

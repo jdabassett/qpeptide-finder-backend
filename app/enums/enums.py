@@ -201,13 +201,14 @@ class AminoAcidEnum(str, Enum):
         return kd_scores[self]
 
     @staticmethod
-    @lru_cache(maxsize=1)
-    def _valid_values() -> set[str]:
+    @lru_cache
+    def valid_values() -> set[str]:
+        """Return cached set of all valid amino acid single-letter codes."""
         return {aa.value for aa in AminoAcidEnum}
 
     @staticmethod
     def is_valid_amino_acid(value: str) -> bool:
-        return value.upper() in AminoAcidEnum._valid_values()
+        return value.upper() in AminoAcidEnum.valid_values()
 
     @classmethod
     def to_amino_acids(cls, sequence: str) -> list["AminoAcidEnum"]:
@@ -236,17 +237,53 @@ class AminoAcidEnum(str, Enum):
 class CriteriaEnum(str, Enum):
     """All supported qpeptide criteria."""
 
+    NOT_UNIQUE = "not_unique"
+    CONTAINS_MISSED_CLEAVAGES = "contains_missed_cleavages"
+    HAS_FLANKING_CUT_SITES = "has_flanking_cut_sites"
+    OUTLIER_LENGTH = "outlier_length"
+    CONTAINS_N_TERMINAL_GLUTAMINE_MOTIF = "contains_n_terminal_glutamine_motif"
     CONTAINS_ASPARAGINE_GLYCINE_MOTIF = "contains_asparagine_glycine_motif"
     CONTAINS_ASPARTIC_PROLINE_MOTIF = "contains_aspartic_proline_motif"
-    CONTAINS_CYSTEINE = "contains_cysteine"
-    CONTAINS_LONG_HOMOPOLYMERIC_STRETCH = "contains_long_homopolymeric_stretch"
     CONTAINS_METHIONINE = "contains_methionine"
-    CONTAINS_MISSED_CLEAVAGES = "contains_missed_cleavages"
-    CONTAINS_N_TERMINAL_GLUTAMINE_MOTIF = "contains_n_terminal_glutamine_motif"
-    HAS_FLANKING_CUT_SITES = "has_flanking_cut_sites"
-    LACKING_FLANKING_AMINO_ACIDS = "lacking_flanking_amino_acids"
-    NOT_UNIQUE = "not_unique"
-    OUTLIER_CHARGE_STATE = "outlier_charge_state"
     OUTLIER_HYDROPHOBICITY = "outlier_hydrophobicity"
-    OUTLIER_LENGTH = "outlier_length"
+    OUTLIER_CHARGE_STATE = "outlier_charge_state"
     OUTLIER_PI = "outlier_pi"
+    CONTAINS_LONG_HOMOPOLYMERIC_STRETCH = "contains_long_homopolymeric_stretch"
+    LACKING_FLANKING_AMINO_ACIDS = "lacking_flanking_amino_acids"
+    CONTAINS_CYSTEINE = "contains_cysteine"
+
+    @classmethod
+    def order_least_to_most_important(cls) -> list["CriteriaEnum"]:
+        """Returns list of CriteriaEnums from least to most important."""
+        return [
+            CriteriaEnum.NOT_UNIQUE,
+            CriteriaEnum.HAS_FLANKING_CUT_SITES,
+            CriteriaEnum.CONTAINS_MISSED_CLEAVAGES,
+            CriteriaEnum.CONTAINS_N_TERMINAL_GLUTAMINE_MOTIF,
+            CriteriaEnum.CONTAINS_ASPARAGINE_GLYCINE_MOTIF,
+            CriteriaEnum.CONTAINS_ASPARTIC_PROLINE_MOTIF,
+            CriteriaEnum.CONTAINS_METHIONINE,
+            CriteriaEnum.OUTLIER_LENGTH,
+            CriteriaEnum.OUTLIER_HYDROPHOBICITY,
+            CriteriaEnum.OUTLIER_CHARGE_STATE,
+            CriteriaEnum.OUTLIER_PI,
+            CriteriaEnum.CONTAINS_LONG_HOMOPOLYMERIC_STRETCH,
+            CriteriaEnum.LACKING_FLANKING_AMINO_ACIDS,
+            CriteriaEnum.CONTAINS_CYSTEINE,
+        ]
+
+    @classmethod
+    @lru_cache
+    def criteria_weights(cls) -> dict["CriteriaEnum", float]:
+        """
+        Calculate weights for each criteria enum based on importance.
+        """
+
+        ordered_enums = cls.order_least_to_most_important()
+        n = len(ordered_enums)
+        weights: dict[CriteriaEnum, float] = {}
+
+        for i, enum in enumerate(ordered_enums):
+            weights[enum] = 2 ** (n - 1 - i)
+
+        return weights
