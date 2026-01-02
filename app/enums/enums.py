@@ -100,8 +100,6 @@ class DigestStatusEnum(str, Enum):
 class AminoAcidEnum(str, Enum):
     """All valid amino acids."""
 
-    _valid_values_cache: set[str] | None = None
-
     ALANINE = "A"
     ARGININE = "R"
     ASPARAGINE = "N"
