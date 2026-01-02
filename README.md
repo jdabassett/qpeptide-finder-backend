@@ -5,7 +5,6 @@
 
   **A FastAPI-based backend service for quantitative proteomics peptide selection and analysis**
 
-  [![CI](https://github.com/jdabassett/qpeptide-cutter/actions/workflows/ci.yml/badge.svg)](https://github.com/jdabassett/qpeptide-cutter/actions/workflows/ci.yml)
   [![Python](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/downloads/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.120+-00a398.svg)](https://fastapi.tiangolo.com/)
   [![Poetry](https://img.shields.io/badge/poetry-2.2.1-60a5fa.svg)](https://python-poetry.org/)
