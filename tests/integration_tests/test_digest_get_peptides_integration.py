@@ -2,13 +2,19 @@
 Unit tests for the digest peptides endpoint.
 """
 
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.enums import DigestStatusEnum, ProteaseEnum
+from tests.factories import DigestFactory, UserFactory
 
-@pytest.mark.unit
+
+@pytest.mark.integration
 def test_get_digest_peptides_by_id_success(
-    client: TestClient, setup_digest_with_peptides: tuple[str, str]
+    client: TestClient,
+    setup_digest_with_peptides: tuple[str, str],
 ) -> None:
     """Test successfully getting peptides for a digest with all functions patched."""
     # setup
@@ -52,3 +58,60 @@ def test_get_digest_peptides_by_id_success(
         assert "goal" in criterion
         assert "rationale" in criterion
         assert "rank" in criterion
+
+
+@pytest.mark.integration
+def test_get_digest_peptides_by_id_user_not_found(
+    client: TestClient,
+    setup_digest_with_peptides: tuple[str, str],
+) -> None:
+    """Test that 404 is returned when user is not found."""
+    # setup
+    _, digest_id = setup_digest_with_peptides
+    nonexistent_user_id = str(uuid.uuid4())
+
+    # execute
+    response = client.get(f"/api/v1/digest/{nonexistent_user_id}/{digest_id}/peptides")
+
+    # validate
+    assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_get_digest_peptides_by_id_digest_not_found(
+    client: TestClient,
+    setup_digest_with_peptides: tuple[str, str],
+) -> None:
+    """Test that 404 is returned when digest is not found."""
+    # setup
+    user_id, _ = setup_digest_with_peptides
+    nonexistent_digest_id = str(uuid.uuid4())
+
+    # execute
+    response = client.get(f"/api/v1/digest/{user_id}/{nonexistent_digest_id}/peptides")
+
+    # validate
+    assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_get_digest_peptides_by_id_no_peptides_found(
+    client: TestClient,
+    db_session: pytest.Session,
+) -> None:
+    """Test that 404 is returned when digest exists but has no peptides."""
+    # setup
+    user = UserFactory.create()
+    digest = DigestFactory.create(
+        user=user,
+        status=DigestStatusEnum.PROCESSING,
+        sequence="MKTAYIAKQR",
+        protease=ProteaseEnum.TRYPSIN,
+    )
+    db_session.commit()
+
+    # execute
+    response = client.get(f"/api/v1/digest/{user.id}/{digest.id}/peptides")
+
+    # validate
+    assert response.status_code == 404

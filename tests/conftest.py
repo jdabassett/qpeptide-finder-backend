@@ -45,14 +45,29 @@ CRITERIA_DATA = [
         "rationale": "Missed cleavage sites (e.g., Lys-Pro, Arg-Pro) produce heterogeneous peptide populations, reducing reproducibility and quantitative accuracy.",
     },
     {
+        "code": "contains_n_terminal_glutamine_motif",
+        "goal": "Exclude peptides with N-terminal glutamine.",
+        "rationale": "N-terminal glutamine cyclizes to pyroglutamate or converts to glutamate post-digestion, producing multiple forms that complicate quantification.",
+    },
+    {
+        "code": "contains_asparagine_glycine_motif",
+        "goal": "Exclude Asparagine–Glycine sequences.",
+        "rationale": "N–G motifs deamidate rapidly post-digestion, producing mixed modified/unmodified peptides that complicate quantitation.",
+    },
+    {
+        "code": "contains_aspartic_proline_motif",
+        "goal": "Exclude Aspartic–Proline sequences.",
+        "rationale": "Aspartic acid followed by proline causes preferential gas-phase cleavage, producing non-informative fragmentation spectra and reducing identification confidence.",
+    },
+    {
+        "code": "contains_methionine",
+        "goal": "Avoid methionine-containing peptides.",
+        "rationale": "Methionine oxidizes readily during sample handling, generating multiple peptide species with different masses and retention times, reducing quantitative precision.",
+    },
+    {
         "code": "outlier_length",
         "goal": "7–30 amino acids.",
         "rationale": "Peptides shorter than 7 residues are often not unique and fragment poorly. Peptides longer than 30 residues ionize inefficiently and fragment unpredictably. This range provides optimal MS detectability and sequence coverage.",
-    },
-    {
-        "code": "lacking_flanking_amino_acids",
-        "goal": "Prioritizes peptides with at least 6 residues on both sides of the cleavage site in the intact protein.",
-        "rationale": "Improves trypsin accessibility and digestion efficiency, producing more consistent peptide generation.",
     },
     {
         "code": "outlier_hydrophobicity",
@@ -70,29 +85,14 @@ CRITERIA_DATA = [
         "rationale": "Peptides with pI between 4 and 9 reliably produce clean LC peaks, stable charge states, and informative MS/MS spectra under acidic RP-LC-ESI conditions.",
     },
     {
-        "code": "contains_asparagine_glycine_motif",
-        "goal": "Exclude Asparagine–Glycine sequences.",
-        "rationale": "N–G motifs deamidate rapidly post-digestion, producing mixed modified/unmodified peptides that complicate quantitation.",
-    },
-    {
-        "code": "contains_aspartic_proline_motif",
-        "goal": "Exclude Aspartic–Proline sequences.",
-        "rationale": "Aspartic acid followed by proline causes preferential gas-phase cleavage, producing non-informative fragmentation spectra and reducing identification confidence.",
-    },
-    {
         "code": "contains_long_homopolymeric_stretch",
         "goal": "Avoid homopolymeric sequences.",
         "rationale": "Homopolymeric sequences produce weak, uninformative fragmentation spectra, reducing confidence in identification.",
     },
     {
-        "code": "contains_n_terminal_glutamine_motif",
-        "goal": "Exclude peptides with N-terminal glutamine.",
-        "rationale": "N-terminal glutamine cyclizes to pyroglutamate or converts to glutamate post-digestion, producing multiple forms that complicate quantification.",
-    },
-    {
-        "code": "contains_methionine",
-        "goal": "Avoid methionine-containing peptides.",
-        "rationale": "Methionine oxidizes readily during sample handling, generating multiple peptide species with different masses and retention times, reducing quantitative precision.",
+        "code": "lacking_flanking_amino_acids",
+        "goal": "Prioritizes peptides with at least 6 residues on both sides of the cleavage site in the intact protein.",
+        "rationale": "Improves trypsin accessibility and digestion efficiency, producing more consistent peptide generation.",
     },
     {
         "code": "contains_cysteine",
@@ -268,3 +268,12 @@ def setup_digest_with_peptides(
     db_session.commit()
 
     return user_id, digest_id
+
+
+@pytest.fixture(scope="function")
+def seeded_criteria(db_session: Session) -> list[Criteria]:
+    """
+    Get all seeded criteria from the database.
+    Returns the criteria that are seeded in db_session fixture.
+    """
+    return db_session.query(Criteria).order_by(Criteria.rank).all()

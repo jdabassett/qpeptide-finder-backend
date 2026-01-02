@@ -206,6 +206,10 @@ def get_digest_peptides_by_id(
 
         return response
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (404s from find_one_by_or_raise methods)
+        # These should pass through unchanged
+        raise
     except (DatabaseError, OperationalError) as e:
         logger.error(
             f"Database error getting peptides: user_id={user_id}, "
