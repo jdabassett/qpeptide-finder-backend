@@ -18,11 +18,11 @@ def test_create_digest_job_success(client: TestClient) -> None:
     """Test creating a new digest job with all functions patched."""
     # setup
     user = UserFactory.build()
-    digest = DigestFactory.build(user_id=user.id)
+    digest = DigestFactory.create(user=user)
     protein_domain = ProteinDomainFactory.build()
 
     request_data = {
-        "user_email": user.email,
+        "user_id": user.id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -58,7 +58,7 @@ def test_create_digest_job_success(client: TestClient) -> None:
     data = response.json()
     assert data["digest_id"] == digest.id
 
-    mock_get_user.assert_called_once_with(ANY, email=user.email)
+    mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()
@@ -71,7 +71,7 @@ def test_create_digest_job_user_not_found(client: TestClient) -> None:
     """Test that 404 is returned when user is not found."""
     # setup
     request_data = {
-        "user_email": "nonexistent@example.com",
+        "user_id": "fc502bbe-5a1b-4f99-b716-e1970db2aef7",
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -80,7 +80,7 @@ def test_create_digest_job_user_not_found(client: TestClient) -> None:
     with patch("app.api.routes.digest.User.find_one_by_or_raise") as mock_get_user:
         mock_get_user.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No User records found with email='nonexistent@example.com'.",
+            detail="No User records found with id='fc502bbe-5a1b-4f99-b716-e1970db2aef7'.",
         )
 
         # execute
@@ -92,8 +92,10 @@ def test_create_digest_job_user_not_found(client: TestClient) -> None:
     # validate
     assert response.status_code == 404
     data = response.json()
-    assert "nonexistent@example.com" in data["detail"]
-    mock_get_user.assert_called_once_with(ANY, email="nonexistent@example.com")
+    assert "fc502bbe-5a1b-4f99-b716-e1970db2aef7" in data["detail"]
+    mock_get_user.assert_called_once_with(
+        ANY, id="fc502bbe-5a1b-4f99-b716-e1970db2aef7"
+    )
 
 
 @pytest.mark.unit
@@ -102,7 +104,7 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
     # setup
     user = UserFactory.build()
     request_data = {
-        "user_email": user.email,
+        "user_id": user.id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -131,7 +133,7 @@ def test_create_digest_job_limit_exceeded(client: TestClient) -> None:
     assert response.status_code == 400
     data = response.json()
     assert "limit" in data["detail"].lower() or "more than" in data["detail"].lower()
-    mock_get_user.assert_called_once_with(ANY, email=user.email)
+    mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
 
 
@@ -141,7 +143,7 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
     # setup
     user = UserFactory.build()
     request_data = {
-        "user_email": user.email,
+        "user_id": user.id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -173,7 +175,7 @@ def test_create_digest_job_too_soon(client: TestClient) -> None:
     assert response.status_code == 429
     data = response.json()
     assert "wait" in data["detail"].lower() or "minutes ago" in data["detail"].lower()
-    mock_get_user.assert_called_once_with(ANY, email=user.email)
+    mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
 
@@ -184,7 +186,7 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
     # setup
     user = UserFactory.build()
     request_data = {
-        "user_email": user.email,
+        "user_id": user.id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -219,7 +221,7 @@ def test_create_digest_job_integrity_error(client: TestClient) -> None:
         "database constraint violation" in data["detail"].lower()
         or "constraint" in data["detail"].lower()
     )
-    mock_get_user.assert_called_once_with(ANY, email=user.email)
+    mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()
@@ -231,7 +233,7 @@ def test_create_digest_job_value_error(client: TestClient) -> None:
     # setup
     user = UserFactory.build()
     request_data = {
-        "user_email": user.email,
+        "user_id": user.id,
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
@@ -261,7 +263,7 @@ def test_create_digest_job_value_error(client: TestClient) -> None:
     assert response.status_code == 400
     data = response.json()
     assert "invalid digest job data" in data["detail"].lower()
-    mock_get_user.assert_called_once_with(ANY, email=user.email)
+    mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
     mock_interval_check.assert_called_once()
     mock_create.assert_called_once()

@@ -76,6 +76,7 @@ def test_create_peptide_successfully(db_session: Session):
     pi = 7.5
     charge_state = 2
     max_kd_score = 1.5
+    rank = 1
 
     # execute
     result = Peptide.create(
@@ -86,6 +87,7 @@ def test_create_peptide_successfully(db_session: Session):
         pi=pi,
         charge_state=charge_state,
         max_kd_score=max_kd_score,
+        rank=1,
     )
 
     # validate
@@ -97,6 +99,7 @@ def test_create_peptide_successfully(db_session: Session):
     assert result.pi == pi
     assert result.charge_state == charge_state
     assert result.max_kd_score == max_kd_score
+    assert result.rank == rank
 
 
 @pytest.mark.unit

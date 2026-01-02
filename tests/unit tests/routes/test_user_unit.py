@@ -104,11 +104,10 @@ def test_update_user(client: TestClient) -> None:
 
 
 @pytest.mark.unit
-def test_delete_user_by_email_success(client: TestClient) -> None:
-    """Test successfully deleting a user by email with all functions patched."""
+def test_delete_user_by_id_success(client: TestClient) -> None:
+    """Test successfully deleting a user by user id with all functions patched."""
     # setup
     user = UserFactory.build()
-    user_email = user.email
 
     with (
         patch(
@@ -117,34 +116,34 @@ def test_delete_user_by_email_success(client: TestClient) -> None:
         patch("app.api.routes.users.User.delete") as mock_delete,
     ):
         # execute
-        response = client.delete(f"/api/v1/users/email/{user_email}")
+        response = client.delete(f"/api/v1/users/id/{user.id}")
 
     # validate
     assert response.status_code == 204
     assert response.content == b""
 
-    mock_find_one.assert_called_once_with(ANY, email=user_email)
+    mock_find_one.assert_called_once_with(ANY, id=user.id)
     mock_delete.assert_called_once_with(ANY, user)
 
 
 @pytest.mark.unit
-def test_delete_user_by_email_no_user_found(client: TestClient) -> None:
+def test_delete_user_by_id_no_user_found(client: TestClient) -> None:
     """Test delete user when user is not found with all functions patched."""
     # setup
     with patch("app.api.routes.users.User.find_one_by_or_raise") as mock_find_one:
         mock_find_one.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No User records found with email='email_wont_be_found@email.com'.",
+            detail="No User records found with id='id_wont_be_found'.",
         )
 
         # execute
-        response = client.delete("/api/v1/users/email/email_wont_be_found@email.com")
+        response = client.delete("/api/v1/users/id/id_wont_be_found")
 
     # validate
     assert response.status_code == 404
     response_data = response.json()
     assert "detail" in response_data
     assert "User" in response_data["detail"]
-    assert "email_wont_be_found@email.com" in response_data["detail"]
+    assert "id_wont_be_found" in response_data["detail"]
 
-    mock_find_one.assert_called_once_with(ANY, email="email_wont_be_found@email.com")
+    mock_find_one.assert_called_once_with(ANY, id="id_wont_be_found")

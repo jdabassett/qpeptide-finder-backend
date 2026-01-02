@@ -5,6 +5,7 @@ Pytest configuration and shared fixtures.
 import uuid
 from collections.abc import Generator
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from factory.alchemy import SQLAlchemyModelFactory
@@ -15,13 +16,14 @@ from sqlalchemy.pool import StaticPool
 
 from app.db.session import get_db
 from app.domain import PeptideDomain, ProteinDomain
-from app.enums import AminoAcidEnum, CriteriaEnum
+from app.enums import AminoAcidEnum, CriteriaEnum, DigestStatusEnum, ProteaseEnum
 from app.main import app
 
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Criteria, Digest, Peptide, User  # noqa: F401
 from app.models.base import Base
-from tests.factories import PeptideDomainFactory, ProteinDomainFactory
+from app.tasks import process_digest_job
+from tests.factories import PeptideDomainFactory, ProteinDomainFactory, UserFactory
 
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -232,3 +234,37 @@ def universal_protein(
     )
     protein.digest_sequence()
     return protein
+
+
+@pytest.fixture(scope="function")
+def setup_digest_with_peptides(
+    universal_protein: ProteinDomain,
+    db_session: Session,
+) -> tuple[str, str]:
+    """
+    Set up a complete digest with user, peptides, and criteria for testing.
+    Returns (user, digest) tuple.
+    """
+    user = UserFactory.create()
+    user_id = user.id
+
+    digest_id = str(uuid.uuid4())
+    universal_protein.digest_id = digest_id
+
+    Digest.create(
+        db_session,
+        flush=True,
+        status=DigestStatusEnum.PROCESSING,
+        user_id=user.id,
+        protease=ProteaseEnum.TRYPSIN,
+        protein_name=None,
+        sequence=universal_protein.sequence_as_str,
+        id=digest_id,
+    )
+
+    with patch("app.tasks.digest_task.SessionLocal", return_value=db_session):
+        process_digest_job(universal_protein)
+
+    db_session.commit()
+
+    return user_id, digest_id

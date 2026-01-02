@@ -1,4 +1,9 @@
-from app.schemas.digest import DigestJobRequest, DigestListRequest, DigestListResponse
+from app.schemas.digest import (
+    DigestJobRequest,
+    DigestListRequest,
+    DigestListResponse,
+    DigestPeptidesResponse,
+)
 from app.schemas.user import UserCreate, UserResponse
 
 __all__ = [
@@ -7,4 +12,5 @@ __all__ = [
     "DigestJobRequest",
     "DigestListRequest",
     "DigestListResponse",
+    "DigestPeptidesResponse",
 ]

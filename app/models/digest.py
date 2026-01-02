@@ -37,3 +37,12 @@ class Digest(BaseModel):
     peptides: Mapped[list["Peptide"]] = relationship(
         back_populates="digest", cascade="all, delete-orphan", passive_deletes=True
     )
+
+    def sort_peptides(self) -> list["Peptide"]:
+        """
+        Sort peptides by rank (ascending).
+
+        Returns:
+            List of peptides sorted by rank
+        """
+        return sorted(self.peptides, key=lambda x: x.rank)

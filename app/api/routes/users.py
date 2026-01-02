@@ -67,26 +67,26 @@ def create_or_retrieve_user(
         ) from e
 
 
-@users_router.delete("/email/{email}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_by_email(email: str, session: Session = Depends(get_db)):
+@users_router.delete("/id/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_by_id(user_id: str, session: Session = Depends(get_db)):
     """
-    Delete a user by email address.
+    Delete a user by id.
 
-    - email: Email address of the user to delete
+    - user_id: User id of the user to delete
     - Returns 204 No Content on success
     - Returns 404 if user not found
     - Returns 400/500 for other errors
     """
-    logger.info(f"Received user delete request: email={email}")
-    user: User = User.find_one_by_or_raise(session, email=email)
+    logger.info(f"Received user delete request: user_id={user_id}")
+    user: User = User.find_one_by_or_raise(session, id=user_id)
 
     try:
         User.delete(session, user)
-        logger.info(f"User deleted successfully: email={email}")
+        logger.info(f"User deleted successfully: user_id={user_id}")
         return
     except IntegrityError as e:
         logger.error(
-            f"Database constraint violation while deleting user: email={email}, "
+            f"Database constraint violation while deleting user: user_id={user_id}, "
             f"error={str(e)}"
         )
         raise HTTPException(

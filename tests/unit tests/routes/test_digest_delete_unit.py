@@ -17,25 +17,21 @@ def test_delete_digest_by_id_success(client: TestClient) -> None:
     """Test successfully deleting a digest by ID with all functions patched."""
     # setup
     user = UserFactory.build()
-    digest = DigestFactory.build(user=user)
+    digest = DigestFactory.create(user=user)
 
     with (
-        patch(
-            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
-        ) as mock_find_user,
         patch(
             "app.api.routes.digest.Digest.find_one_by_or_raise", return_value=digest
         ) as mock_find_digest,
         patch("app.api.routes.digest.Digest.delete") as mock_delete,
     ):
         # execute
-        response = client.delete(f"/api/v1/digest/delete/{user.email}/{digest.id}")
+        response = client.delete(f"/api/v1/digest/delete/{user.id}/{digest.id}")
 
     # validate
     assert response.status_code == 204
     assert response.content == b""
 
-    mock_find_user.assert_called_once_with(ANY, email=user.email)
     mock_find_digest.assert_called_once_with(
         ANY,
         user_id=user.id,
@@ -48,26 +44,32 @@ def test_delete_digest_by_id_success(client: TestClient) -> None:
 def test_delete_digest_by_id_user_not_found(client: TestClient) -> None:
     """Test delete digest when user is not found with all functions patched."""
     # setup
-    email = "nonexistent@example.com"
+    nonexistent_user_id = "fc502bbe-5a1b-4f99-b716-e1970db2aef7"
     digest_id = "some-digest-id"
 
-    with patch("app.api.routes.digest.User.find_one_by_or_raise") as mock_find_user:
-        mock_find_user.side_effect = HTTPException(
+    with (
+        patch("app.api.routes.digest.Digest.find_one_by_or_raise") as mock_find_digest,
+    ):
+        mock_find_digest.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No User records found with email='{email}'.",
+            detail=f"No User records found with id='{nonexistent_user_id}'.",
         )
 
         # execute
-        response = client.delete(f"/api/v1/digest/delete/{email}/{digest_id}")
+        response = client.delete(
+            f"/api/v1/digest/delete/{nonexistent_user_id}/{digest_id}"
+        )
 
     # validate
     assert response.status_code == 404
     response_data = response.json()
     assert "detail" in response_data
     assert "User" in response_data["detail"]
-    assert email in response_data["detail"]
+    assert nonexistent_user_id in response_data["detail"]
 
-    mock_find_user.assert_called_once_with(ANY, email=email)
+    mock_find_digest.assert_called_once_with(
+        ANY, user_id=nonexistent_user_id, id=digest_id
+    )
 
 
 @pytest.mark.unit
@@ -75,31 +77,31 @@ def test_delete_digest_by_id_digest_not_found(client: TestClient) -> None:
     """Test delete digest when digest is not found with all functions patched."""
     # setup
     user = UserFactory.build()
-    digest_id = "nonexistent-digest-id"
+    nonexistent_digest_id = "fc502bbe-5a1b-4f99-b716-e1970db2aef7"
 
     with (
-        patch(
-            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
-        ) as mock_find_user,
         patch("app.api.routes.digest.Digest.find_one_by_or_raise") as mock_find_digest,
     ):
         mock_find_digest.side_effect = HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No Digest records found with user_id='{user.id}', id='{digest_id}'.",
+            detail=f"No Digest records found with user_id='{user.id}', id='{nonexistent_digest_id}'.",
         )
 
         # execute
-        response = client.delete(f"/api/v1/digest/delete/{user.email}/{digest_id}")
+        response = client.delete(
+            f"/api/v1/digest/delete/{user.id}/{nonexistent_digest_id}"
+        )
 
     # validate
     assert response.status_code == 404
     response_data = response.json()
     assert "detail" in response_data
     assert "Digest" in response_data["detail"]
-    assert digest_id in response_data["detail"]
+    assert nonexistent_digest_id in response_data["detail"]
 
-    mock_find_user.assert_called_once_with(ANY, email=user.email)
-    mock_find_digest.assert_called_once_with(ANY, user_id=user.id, id=digest_id)
+    mock_find_digest.assert_called_once_with(
+        ANY, user_id=user.id, id=nonexistent_digest_id
+    )
 
 
 @pytest.mark.unit
@@ -107,12 +109,10 @@ def test_delete_digest_by_id_integrity_error(client: TestClient) -> None:
     """Test delete digest when IntegrityError occurs with all functions patched."""
     # setup
     user = UserFactory.build()
-    digest = DigestFactory.build(user_id=user.id)
+    user_id = user.id
+    digest = DigestFactory.create(user=user)
 
     with (
-        patch(
-            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
-        ) as mock_find_user,
         patch(
             "app.api.routes.digest.Digest.find_one_by_or_raise", return_value=digest
         ) as mock_find_digest,
@@ -125,7 +125,7 @@ def test_delete_digest_by_id_integrity_error(client: TestClient) -> None:
         )
 
         # execute
-        response = client.delete(f"/api/v1/digest/delete/{user.email}/{digest.id}")
+        response = client.delete(f"/api/v1/digest/delete/{user.id}/{digest.id}")
 
     # validate
     assert response.status_code == 400
@@ -133,10 +133,9 @@ def test_delete_digest_by_id_integrity_error(client: TestClient) -> None:
     assert "detail" in response_data
     assert "constraint violation" in response_data["detail"].lower()
 
-    mock_find_user.assert_called_once_with(ANY, email=user.email)
     mock_find_digest.assert_called_once_with(
         ANY,
-        user_id=user.id,
+        user_id=user_id,
         id=digest.id,
     )
     mock_delete.assert_called_once_with(ANY, digest)
