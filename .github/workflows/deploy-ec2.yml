@@ -10,7 +10,8 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  BACKEND_ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
+  FRONTEND_ECR_REPOSITORY: ${{ secrets.FRONTEND_ECR_REPOSITORY }}
 
 jobs:
   deploy:
@@ -39,29 +40,26 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Get the migration workflow run to extract the commit SHA
             const migrationRun = context.payload.workflow_run;
-
-            // Get the original build workflow run that triggered migrations
-            const buildRun = await github.rest.actions.getWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: migrationRun.id,
-            });
-
-            // Navigate back to find the build workflow run
-            // We need to get the workflow_run that triggered the migration workflow
-            const workflowRuns = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: migrationRun.workflow_id,
-              per_page: 1,
-            });
-
-            // Extract commit SHA from the migration workflow run
             const commitSha = migrationRun.head_sha;
             core.setOutput('result', commitSha);
             return commitSha;
+
+      - name: Get latest frontend image tag
+        id: get-frontend-tag
+        run: |
+          FRONTEND_TAG=$(aws ecr describe-images \
+            --repository-name ${{ env.FRONTEND_ECR_REPOSITORY }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'sort_by(imageDetails,&imagePushedAt)[-1].imageTags[0]' \
+            --output text 2>/dev/null || echo "latest")
+
+          if [ "$FRONTEND_TAG" = "None" ] || [ -z "$FRONTEND_TAG" ]; then
+            FRONTEND_TAG="latest"
+          fi
+
+          echo "frontend_tag=${FRONTEND_TAG}" >> $GITHUB_OUTPUT
+          echo "Using frontend tag: ${FRONTEND_TAG}"
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -75,17 +73,14 @@ jobs:
       - name: Deploy to EC2
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
-          ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
-          CONTAINER_NAME: ${{ secrets.EC2_CONTAINER_NAME }}
-          APP_PORT: ${{ secrets.EC2_PORT }}
+          BACKEND_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
+          FRONTEND_TAG: ${{ steps.get-frontend-tag.outputs.frontend_tag }}
         run: |
-          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-
-          echo "🚀 Deploying $IMAGE_URI to EC2..."
-
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<ENDSSH
             set -e
+
+            # Create deployment directory structure
+            mkdir -p /opt/qpeptide/deploy/nginx
 
             # Ensure no stale Docker Hub credentials remain
             docker logout docker.io >/dev/null 2>&1 || true
@@ -94,73 +89,104 @@ jobs:
             # Login to ECR
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-            echo "📥 Pulling image: $IMAGE_URI"
-            docker pull "$IMAGE_URI"
+            # Pull latest images
+            echo "📥 Pulling backend image..."
+            docker pull "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:${BACKEND_TAG}" || {
+              echo "⚠️ Backend image not found, using latest"
+              docker pull "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:latest" || true
+            }
 
-            if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-              echo "🛑 Stopping old container: ${CONTAINER_NAME}"
-              docker stop "${CONTAINER_NAME}" || true
-              docker rm "${CONTAINER_NAME}" || true
+            echo "📥 Pulling frontend image..."
+            docker pull "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:${FRONTEND_TAG}" || {
+              echo "⚠️ Frontend image not found, using latest"
+              docker pull "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:latest" || true
+            }
+
+            # Tag as latest for docker-compose
+            docker tag "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:${BACKEND_TAG}" "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:latest" 2>/dev/null || true
+            docker tag "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:${FRONTEND_TAG}" "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:latest" 2>/dev/null || true
+
+            # Clean up old images
+            docker image prune -f
+          ENDSSH
+
+      - name: Upload infrastructure files
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "deploy/"
+          target: "/opt/qpeptide/"
+          strip_components: 1
+
+      - name: Start services with docker-compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/qpeptide/deploy
+
+            # Set environment variables for docker-compose
+            export ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+            export BACKEND_ECR_REPO="${{ env.BACKEND_ECR_REPOSITORY }}"
+            export FRONTEND_ECR_REPO="${{ env.FRONTEND_ECR_REPOSITORY }}"
+            export AWS_REGION="${{ env.AWS_REGION }}"
+            export EC2_HOST="${{ secrets.EC2_HOST }}"
+
+            # Ensure docker-compose is available (install if needed)
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing docker-compose..."
+              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              chmod +x /usr/local/bin/docker-compose
             fi
 
-            docker image prune -f
+            # Stop old containers if they exist
+            docker-compose -f docker-compose.prod.yml down || true
 
-            echo "Starting new container: ${CONTAINER_NAME}"
-            docker run -d \
-              --name "${CONTAINER_NAME}" \
-              --restart unless-stopped \
-              -p "${APP_PORT}:8000" \
-              -e ENVIRONMENT=production \
-              -e AWS_REGION=${{ env.AWS_REGION }} \
-              "$IMAGE_URI"
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull || true
 
-            echo "📋 Checking container logs..."
-            sleep 3
-            docker logs "${CONTAINER_NAME}" || true
+            # Start services
+            docker-compose -f docker-compose.prod.yml up -d
 
+            # Wait for services to be healthy
             sleep 10
 
-            if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
-              echo "✅ Container ${CONTAINER_NAME} is running"
-              echo "📋 Recent container logs:"
-              docker logs --tail 50 "${CONTAINER_NAME}" || true
+            # Check service status
+            docker-compose -f docker-compose.prod.yml ps
 
-              echo "🏥 Checking health endpoint..."
-              sleep 15
+            # Health check
+            echo "🏥 Checking health endpoints..."
+            sleep 15
 
-              # Try health check with retries
-              MAX_ATTEMPTS=3
-              ATTEMPT=1
-              while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-                echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
-                if curl -f -m 5 "http://localhost:${APP_PORT}/health" > /dev/null 2>&1; then
-                  echo "✅ Health check passed"
-                  break
-                else
-                  if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-                    echo "⚠️ Health check failed after $MAX_ATTEMPTS attempts"
-                    echo "📋 Container logs:"
-                    docker logs --tail 100 "${CONTAINER_NAME}" || true
-                    exit 1
-                  fi
-                  sleep 5
-                  ATTEMPT=$((ATTEMPT + 1))
+            MAX_ATTEMPTS=5
+            ATTEMPT=1
+            while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+              echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
+              if curl -f -m 5 "http://localhost/health" > /dev/null 2>&1; then
+                echo "✅ Health check passed"
+                break
+              else
+                if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+                  echo "⚠️ Health check failed after $MAX_ATTEMPTS attempts"
+                  echo "📋 Container logs:"
+                  docker-compose -f docker-compose.prod.yml logs --tail 50
+                  exit 1
                 fi
-              done
+                sleep 5
+                ATTEMPT=$((ATTEMPT + 1))
+              fi
+            done
 
-              echo "🎉 Deployment complete!"
-            else
-              echo "❌ Container failed to start"
-              echo "📋 Container logs:"
-              docker logs "${CONTAINER_NAME}" || true
-              exit 1
-            fi
-          ENDSSH
+            echo "🎉 Deployment complete!"
 
       - name: Deployment summary
         run: |
           echo "### Deployment Complete :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**EC2 Instance:** \`${{ secrets.EC2_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Container:** \`${{ secrets.EC2_CONTAINER_NAME }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend Image:** \`${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ steps.workflow-run.outputs.result }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Frontend Image:** \`${{ steps.login-ecr.outputs.registry }}/${{ env.FRONTEND_ECR_REPOSITORY }}:${{ steps.get-frontend-tag.outputs.frontend_tag }}\`" >> $GITHUB_STEP_SUMMARY

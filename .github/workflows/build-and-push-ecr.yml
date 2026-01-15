@@ -7,7 +7,7 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+  BACKEND_ECR_REPOSITORY: ${{ secrets.BACKEND_ECR_REPOSITORY }}
 
 jobs:
   build-and-push:
@@ -17,7 +17,7 @@ jobs:
     outputs:
       ecr_registry: ${{ steps.login-ecr.outputs.registry }}
       image_tag: ${{ github.sha }}
-      image_uri: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+      image_uri: ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
 
     steps:
       - name: Checkout code
@@ -40,19 +40,20 @@ jobs:
       - name: Verify ECR repository exists
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          BACKEND_ECR_REPOSITORY: ${{ env.BACKEND_ECR_REPOSITORY }}
         run: |
-          echo "Checking if ECR repository exists: $ECR_REPOSITORY"
+          echo "Checking if Backend ECR repository exists: $BACKEND_ECR_REPOSITORY"
 
           # Check if repository exists
           if aws ecr describe-repositories \
-            --repository-names $ECR_REPOSITORY \
+            --repository-names $BACKEND_ECR_REPOSITORY \
             --region $AWS_REGION > /dev/null 2>&1; then
-            echo "✅ ECR repository exists: $ECR_REPOSITORY"
+            echo "✅ ECR repository exists: $BACKEND_ECR_REPOSITORY"
           else
-            echo "❌ ECR repository does not exist: $ECR_REPOSITORY"
+            echo "❌ ECR repository does not exist: $BACKEND_ECR_REPOSITORY"
             echo "Creating repository..."
             aws ecr create-repository \
-              --repository-name $ECR_REPOSITORY \
+              --repository-name $BACKEND_ECR_REPOSITORY \
               --region $AWS_REGION \
               --image-scanning-configuration scanOnPush=true \
               --image-tag-mutability MUTABLE
@@ -66,8 +67,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.BACKEND_ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -76,36 +77,38 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          BACKEND_ECR_REPOSITORY: ${{ env.BACKEND_ECR_REPOSITORY }}
         run: |
           echo "### Docker Image Published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository:** $ECR_REPOSITORY" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Latest:** \`$ECR_REGISTRY/$ECR_REPOSITORY:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** $BACKEND_ECR_REPOSITORY" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest:** \`$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Output image details
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          BACKEND_ECR_REPOSITORY: ${{ env.BACKEND_ECR_REPOSITORY }}
         run: |
           echo "### Docker Image Published :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Repository:** $ECR_REPOSITORY" >> $GITHUB_STEP_SUMMARY
-          echo "**Image:** \`$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Latest:** \`$ECR_REGISTRY/$ECR_REPOSITORY:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Repository:** $BACKEND_ECR_REPOSITORY" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Latest:** \`$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:latest\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Pull command:**" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull $ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
           # Output for other workflows
           echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_OUTPUT
-          echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_OUTPUT
+          echo "BACKEND_ECR_REPOSITORY=$BACKEND_ECR_REPOSITORY" >> $GITHUB_OUTPUT
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_URI=$ECR_REGISTRY/$BACKEND_ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
