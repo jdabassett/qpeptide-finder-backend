@@ -141,7 +141,10 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
 
     # CORS
-    BACKEND_CORS_ORIGINS: list[str] | str = ["http://localhost:3000"]
+    BACKEND_CORS_ORIGINS: list[str] | str = ["http://localhost"]
+
+    # API security
+    API_KEY: str = ""
 
     # Environment
     ENVIRONMENT: str = "development"

@@ -135,6 +135,7 @@ jobs:
             export FRONTEND_ECR_REPO="${{ env.FRONTEND_ECR_REPOSITORY }}"
             export AWS_REGION="${{ env.AWS_REGION }}"
             export EC2_HOST="${{ secrets.EC2_HOST }}"
+            export API_KEY="${{ secrets.API_KEY }}"
 
             # Ensure docker-compose is available (install if needed)
             if ! command -v docker-compose &> /dev/null; then
