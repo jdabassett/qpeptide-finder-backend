@@ -75,40 +75,43 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           BACKEND_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
           FRONTEND_TAG: ${{ steps.get-frontend-tag.outputs.frontend_tag }}
+          BACKEND_ECR_REPO: ${{ env.BACKEND_ECR_REPOSITORY }}
+          FRONTEND_ECR_REPO: ${{ env.FRONTEND_ECR_REPOSITORY }}
+          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<ENDSSH
             set -e
 
-            # Get the actual EC2 username (escape $ so it's evaluated on EC2)
-            EC2_USERNAME=\$(whoami)
+            # Get the actual EC2 username
+            EC2_USERNAME=$(whoami)
 
             # Create deployment directory structure with proper permissions
             sudo mkdir -p /opt/qpeptide/deploy/nginx
-            sudo chown -R \$EC2_USERNAME:\$EC2_USERNAME /opt/qpeptide
+            sudo chown -R $EC2_USERNAME:$EC2_USERNAME /opt/qpeptide
 
             # Ensure no stale Docker Hub credentials remain
             docker logout docker.io >/dev/null 2>&1 || true
             docker logout https://registry-1.docker.io/v2/ >/dev/null 2>&1 || true
 
-            # Login to ECR (variables like \$ECR_REGISTRY are from GitHub Actions env, so don't escape)
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+            # Login to ECR
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
             # Pull latest images
             echo "📥 Pulling backend image..."
-            docker pull "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:\${BACKEND_TAG}" || {
+            docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG" || {
               echo "⚠️ Backend image not found, using latest"
-              docker pull "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:latest" || true
+              docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest" || true
             }
 
             echo "📥 Pulling frontend image..."
-            docker pull "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:\${FRONTEND_TAG}" || {
+            docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG" || {
               echo "⚠️ Frontend image not found, using latest"
-              docker pull "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:latest" || true
+              docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest" || true
             }
 
             # Tag as latest for docker-compose
-            docker tag "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:\${BACKEND_TAG}" "$ECR_REGISTRY/${{ env.BACKEND_ECR_REPOSITORY }}:latest" 2>/dev/null || true
-            docker tag "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:\${FRONTEND_TAG}" "$ECR_REGISTRY/${{ env.FRONTEND_ECR_REPOSITORY }}:latest" 2>/dev/null || true
+            docker tag "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG" "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest" 2>/dev/null || true
+            docker tag "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG" "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest" 2>/dev/null || true
 
             # Clean up old images
             docker image prune -f
