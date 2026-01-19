@@ -19,14 +19,19 @@ class NginxValidatorMiddleware(BaseHTTPMiddleware):
         client_host = request.client.host if request.client else "unknown"
         if request.url.path == "/health":
             forwarded_by = request.headers.get("X-Forwarded-By")
-            if forwarded_by != "nginx":
+            if forwarded_by == "nginx" or client_host in (
+                "127.0.0.1",
+                "localhost",
+                "::1",
+            ):
+                response = await call_next(request)
+                return response
+            else:
                 logger.warning(f"Direct access attempt to /health from {client_host}")
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
                     content={"detail": "Direct access not allowed. Use nginx proxy."},
                 )
-            response = await call_next(request)
-            return response
 
         if request.url.path.startswith("/api"):
             forwarded_by = request.headers.get("X-Forwarded-By")
