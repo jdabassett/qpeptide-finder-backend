@@ -89,12 +89,12 @@ jobs:
             bash <<'ENDSSH'
             set -e
 
-            # Get the actual EC2 username
-            EC2_USERNAME=$(whoami)
+            # Get the actual EC2 username (escape $ so it's evaluated on EC2)
+            EC2_USERNAME=\$(whoami)
 
             # Create deployment directory structure with proper permissions
             sudo mkdir -p /opt/qpeptide/deploy/nginx
-            sudo chown -R $EC2_USERNAME:$EC2_USERNAME /opt/qpeptide
+            sudo chown -R \$EC2_USERNAME:\$EC2_USERNAME /opt/qpeptide
 
             # Ensure no stale Docker Hub credentials remain
             docker logout docker.io >/dev/null 2>&1 || true
