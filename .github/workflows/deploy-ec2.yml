@@ -79,8 +79,9 @@ jobs:
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} <<ENDSSH
             set -e
 
-            # Create deployment directory structure
-            mkdir -p /opt/qpeptide/deploy/nginx
+            # Create deployment directory structure with proper permissions
+            sudo mkdir -p /opt/qpeptide/deploy/nginx
+            sudo chown -R $USER:$USER /opt/qpeptide
 
             # Ensure no stale Docker Hub credentials remain
             docker logout docker.io >/dev/null 2>&1 || true
