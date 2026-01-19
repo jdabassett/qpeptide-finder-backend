@@ -1,0 +1,58 @@
+services:
+  backend:
+    image: ${ECR_REGISTRY}/${BACKEND_ECR_REPO}:latest
+    container_name: qpeptide-backend-prod
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - AWS_REGION=${AWS_REGION}
+    networks:
+      - qpeptide-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  frontend:
+    image: ${ECR_REGISTRY}/${FRONTEND_ECR_REPO}:latest
+    container_name: qpeptide-frontend-prod
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_URL=http://${EC2_HOST}/api
+    networks:
+      - qpeptide-network
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: qpeptide-nginx-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint.sh:ro
+    environment:
+      - API_KEY=${API_KEY}
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
+    networks:
+      - qpeptide-network
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  qpeptide-network:
+    driver: bridge

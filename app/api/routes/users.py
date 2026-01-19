@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import verify_internal_api_key
 from app.db.session import get_db
 from app.models import User
 from app.schemas.user import UserCreate, UserResponse
@@ -16,7 +17,9 @@ users_router = APIRouter(prefix="/users", tags=["users"])
 
 @users_router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_or_retrieve_user(
-    user_request: UserCreate, session: Session = Depends(get_db)
+    user_request: UserCreate,
+    api_key: str = Depends(verify_internal_api_key),
+    session: Session = Depends(get_db),
 ):
     """
     Create or retrieve user record base on email address.
@@ -68,7 +71,11 @@ def create_or_retrieve_user(
 
 
 @users_router.delete("/id/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user_by_id(user_id: str, session: Session = Depends(get_db)):
+def delete_user_by_id(
+    user_id: str,
+    api_key: str = Depends(verify_internal_api_key),
+    session: Session = Depends(get_db),
+):
     """
     Delete a user by id.
 

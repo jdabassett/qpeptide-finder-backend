@@ -5,6 +5,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import DatabaseError, IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
+from app.core.dependencies import verify_internal_api_key
 from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
@@ -35,6 +36,7 @@ digest_router = APIRouter(prefix="/digest", tags=["digest"])
 def create_digest_job(
     job_request: DigestJobRequest,
     background_tasks: BackgroundTasks,
+    api_key: str = Depends(verify_internal_api_key),
     session: Session = Depends(get_db),
 ):
     """
@@ -97,6 +99,7 @@ def create_digest_job(
 )
 def get_digests_by_id(
     user_id: str,
+    api_key: str = Depends(verify_internal_api_key),
     session: Session = Depends(get_db),
 ):
     """
@@ -123,6 +126,7 @@ def get_digests_by_id(
 def delete_digest_by_id(
     user_id: str,
     digest_id: str,
+    api_key: str = Depends(verify_internal_api_key),
     session: Session = Depends(get_db),
 ):
     """
@@ -167,6 +171,7 @@ def delete_digest_by_id(
 def get_digest_peptides_by_id(
     user_id: str,
     digest_id: str,
+    api_key: str = Depends(verify_internal_api_key),
     session: Session = Depends(get_db),
 ):
     """

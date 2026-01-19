@@ -14,10 +14,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.dependencies import verify_internal_api_key
 from app.db.session import get_db
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import AminoAcidEnum, CriteriaEnum, DigestStatusEnum, ProteaseEnum
 from app.main import app
+from app.middleware.nginx_validator import NginxValidatorMiddleware
 
 # Import all models to ensure they're registered with BaseModel.metadata
 from app.models import Criteria, Digest, Peptide, User  # noqa: F401
@@ -166,6 +168,7 @@ def client(db_session: Session):
     """
     Create a test client for the FastAPI application.
     Overrides the get_db dependency to use the test database session.
+    Also bypasses security middleware and API key validation for testing.
     """
 
     def override_get_db():
@@ -176,10 +179,22 @@ def client(db_session: Session):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as test_client:
-        yield test_client
+    async def override_verify_api_key():
+        """Bypass API key validation in tests."""
+        return "test-api-key"
 
-    app.dependency_overrides.clear()
+    app.dependency_overrides[verify_internal_api_key] = override_verify_api_key
+
+    async def bypass_dispatch(self, request, call_next):
+        """Bypass middleware validation in tests."""
+        return await call_next(request)
+
+    with patch.object(NginxValidatorMiddleware, "dispatch", bypass_dispatch):
+        try:
+            with TestClient(app) as test_client:
+                yield test_client
+        finally:
+            app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="session")
@@ -277,3 +292,32 @@ def seeded_criteria(db_session: Session) -> list[Criteria]:
     Returns the criteria that are seeded in db_session fixture.
     """
     return db_session.query(Criteria).order_by(Criteria.rank).all()
+
+
+@pytest.fixture(scope="function")
+def secure_client(db_session: Session):
+    """
+    Create a test client with security enabled (for testing API key validation).
+    This client does NOT bypass middleware or API key validation.
+    """
+    from app.core import settings
+    from app.db.session import get_db
+    from app.main import app
+
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    original_api_key = settings.API_KEY
+    settings.API_KEY = "test-secret-api-key-12345"
+
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        settings.API_KEY = original_api_key
+        app.dependency_overrides.clear()

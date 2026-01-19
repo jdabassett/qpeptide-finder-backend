@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import digest_router, health_router, users_router
 from app.core import settings
+from app.middleware import NginxValidatorMiddleware
 
 app = FastAPI(title="QPeptide Cutter Backend", version="0.1.0")
+
+app.add_middleware(NginxValidatorMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
