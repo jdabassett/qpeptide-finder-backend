@@ -94,25 +94,47 @@ jobs:
             # Login to ECR
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-            # Pull latest images
+            # Pull backend image (required)
             echo "📥 Pulling backend image..."
-            docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG" || {
-              echo "⚠️ Backend image not found, using latest"
-              docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest" || true
-            }
+            if docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG"; then
+              echo "✅ Backend image pulled: $BACKEND_TAG"
+              docker tag "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG" "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest"
+            elif docker pull "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest"; then
+              echo "✅ Backend latest image pulled"
+            else
+              echo "❌ Backend image not found. Deployment cannot continue."
+              exit 1
+            fi
 
+            # Pull frontend image (optional - use whatever is available)
             echo "📥 Pulling frontend image..."
-            docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG" || {
-              echo "⚠️ Frontend image not found, using latest"
-              docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest" || true
-            }
+            FRONTEND_PULLED=false
+            if [ -n "$FRONTEND_TAG" ] && [ "$FRONTEND_TAG" != "latest" ] && docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG"; then
+              echo "✅ Frontend image pulled: $FRONTEND_TAG"
+              docker tag "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG" "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest"
+              FRONTEND_PULLED=true
+            elif docker pull "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest"; then
+              echo "✅ Frontend latest image pulled"
+              FRONTEND_PULLED=true
+            else
+              echo "⚠️ Frontend image not found in ECR, checking for existing local image..."
+              if docker images "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest" --format "{{.Repository}}:{{.Tag}}" | grep -q .; then
+                echo "✅ Using existing local frontend image"
+                FRONTEND_PULLED=true
+              else
+                echo "⚠️ No frontend image available. Services will start with existing containers if any."
+              fi
+            fi
 
-            # Tag as latest for docker-compose
-            docker tag "$ECR_REGISTRY/$BACKEND_ECR_REPO:$BACKEND_TAG" "$ECR_REGISTRY/$BACKEND_ECR_REPO:latest" 2>/dev/null || true
-            docker tag "$ECR_REGISTRY/$FRONTEND_ECR_REPO:$FRONTEND_TAG" "$ECR_REGISTRY/$FRONTEND_ECR_REPO:latest" 2>/dev/null || true
-
-            # Clean up old images
+            # Clean up old images (but keep what we need)
             docker image prune -f
+
+            # Verify images are ready
+            echo "📋 Available images:"
+            docker images "$ECR_REGISTRY/$BACKEND_ECR_REPO" --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+            if [ "$FRONTEND_PULLED" = "true" ]; then
+              docker images "$ECR_REGISTRY/$FRONTEND_ECR_REPO" --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}"
+            fi
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           BACKEND_TAG: ${{ steps.workflow-run.outputs.result || github.event.workflow_run.head_sha }}
