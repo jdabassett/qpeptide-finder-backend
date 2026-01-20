@@ -129,7 +129,6 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "deploy/"
           target: "/opt/qpeptide/"
-          strip_components: 1
 
       - name: Start services with docker-compose
         uses: appleboy/ssh-action@v1.0.3
