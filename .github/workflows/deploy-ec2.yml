@@ -157,9 +157,6 @@ jobs:
             # Stop old containers if they exist
             docker-compose -f docker-compose.prod.yml down || true
 
-            # Pull latest images
-            docker-compose -f docker-compose.prod.yml pull || true
-
             # Start services
             docker-compose -f docker-compose.prod.yml up -d
 
