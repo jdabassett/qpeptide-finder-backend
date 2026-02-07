@@ -177,5 +177,4 @@ This project was developed to address real challenges in quantitative proteomics
 "If I have seen further, it is by standing on the shoulders of giants." - Sir Isaac Newton
 
 
-
 ## FRONTEND COMING SOON
