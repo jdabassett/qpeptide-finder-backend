@@ -162,6 +162,7 @@ jobs:
           script: |
             cd /opt/qpeptide/deploy
 
+            # Set deployment variables
             export ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             export BACKEND_ECR_REPO="${{ env.BACKEND_ECR_REPOSITORY }}"
             export FRONTEND_ECR_REPO="${{ env.FRONTEND_ECR_REPOSITORY }}"
@@ -174,7 +175,27 @@ jobs:
             export AUTH0_CLIENT_ID="${{ secrets.AUTH0_CLIENT_ID }}"
             export AUTH0_CLIENT_SECRET="${{ secrets.AUTH0_CLIENT_SECRET }}"
 
-            # Ensure docker-compose is available (install if needed)
+            # Fetch frontend secrets from AWS Secrets Manager
+            echo "🔐 Fetching frontend secrets from AWS Secrets Manager..."
+            FRONTEND_SECRETS=$(aws secretsmanager get-secret-value \
+              --secret-id qpeptide-cutter-frontend/secrets \
+              --region "$AWS_REGION" \
+              --query SecretString \
+              --output text 2>&1)
+
+            if [ $? -eq 0 ] && [ -n "$FRONTEND_SECRETS" ]; then
+              export AUTH0_SECRET=$(echo "$FRONTEND_SECRETS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('AUTH0_SECRET',''))")
+              export AUTH0_BASE_URL=$(echo "$FRONTEND_SECRETS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('AUTH0_BASE_URL',''))")
+              export AUTH0_DOMAIN=$(echo "$FRONTEND_SECRETS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('AUTH0_DOMAIN',''))")
+              export AUTH0_CLIENT_ID=$(echo "$FRONTEND_SECRETS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('AUTH0_CLIENT_ID',''))")
+              export AUTH0_CLIENT_SECRET=$(echo "$FRONTEND_SECRETS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('AUTH0_CLIENT_SECRET',''))")
+              echo "✅ Frontend secrets loaded from AWS Secrets Manager"
+            else
+              echo "❌ Failed to fetch frontend secrets from AWS Secrets Manager"
+              echo "$FRONTEND_SECRETS"
+              exit 1
+            fi
+
             if ! command -v docker-compose &> /dev/null; then
               echo "Installing docker-compose..."
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
