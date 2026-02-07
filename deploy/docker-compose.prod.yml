@@ -20,6 +20,11 @@ services:
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_URL=http://${EC2_HOST}/api
+      - AUTH0_SECRET=${AUTH0_SECRET}
+      - AUTH0_BASE_URL=${AUTH0_BASE_URL}
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
     networks:
       - qpeptide-network
     depends_on:

@@ -158,16 +158,21 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY,BACKEND_TAG,FRONTEND_TAG,BACKEND_ECR_REPO,FRONTEND_ECR_REPO,AWS_REGION,EC2_HOST,API_KEY
           script: |
             cd /opt/qpeptide/deploy
 
-            # Set environment variables for docker-compose
             export ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
             export BACKEND_ECR_REPO="${{ env.BACKEND_ECR_REPOSITORY }}"
             export FRONTEND_ECR_REPO="${{ env.FRONTEND_ECR_REPOSITORY }}"
             export AWS_REGION="${{ env.AWS_REGION }}"
             export EC2_HOST="${{ secrets.EC2_HOST }}"
             export API_KEY="${{ secrets.API_KEY }}"
+            export AUTH0_SECRET="${{ secrets.AUTH0_SECRET }}"
+            export AUTH0_BASE_URL="${{ secrets.AUTH0_BASE_URL }}"
+            export AUTH0_DOMAIN="${{ secrets.AUTH0_DOMAIN }}"
+            export AUTH0_CLIENT_ID="${{ secrets.AUTH0_CLIENT_ID }}"
+            export AUTH0_CLIENT_SECRET="${{ secrets.AUTH0_CLIENT_SECRET }}"
 
             # Ensure docker-compose is available (install if needed)
             if ! command -v docker-compose &> /dev/null; then
