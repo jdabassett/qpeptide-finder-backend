@@ -167,7 +167,6 @@ A full-stack software engineer with a background in molecular biology, specializ
 
 #### Acknowledgments
 
-
 This project was developed to address real challenges in quantitative proteomics research. Special thanks to the following individuals their contributions as my molecular biology mentors.
 
 - [Jeff Ranish, PhD](https://www.linkedin.com/in/jeff-ranish-55b9781b)
