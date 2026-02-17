@@ -10,7 +10,6 @@ from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
-    request_outside_digest_interval_or_exception,
     request_within_digest_limit_or_exception,
 )
 from app.models import Criteria, Digest, Peptide, User
@@ -48,7 +47,6 @@ def create_digest_job(
 
     user: User = User.find_one_by_or_raise(session, id=job_request.user_id)
     request_within_digest_limit_or_exception(user.id, session)
-    request_outside_digest_interval_or_exception(user.id, session)
 
     logger.debug(f"Digest checks passed for user_id={job_request.user_id}")
 

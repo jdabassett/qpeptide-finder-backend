@@ -158,7 +158,6 @@ class Settings(BaseSettings):
 
     # Digest Job limit per User
     DIGEST_JOB_LIMIT: int = 3
-    DIGEST_JOB_INTERVAL: int = 2
 
     # Peptide Filter Settings
     MIN_PEPTIDE_LENGTH: int = 7
