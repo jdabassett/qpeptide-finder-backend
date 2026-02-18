@@ -38,10 +38,7 @@ def test_create_digest_job_integration(
         return db_session
 
     # execute
-    with (
-        patch("app.api.routes.digest.request_outside_digest_interval_or_exception"),
-        patch("app.tasks.digest_task.SessionLocal") as mock_session_local,
-    ):
+    with (patch("app.tasks.digest_task.SessionLocal") as mock_session_local,):
         mock_session_local.return_value = db_session
 
         response = client.post(

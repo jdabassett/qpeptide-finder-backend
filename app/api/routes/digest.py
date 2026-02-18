@@ -10,7 +10,6 @@ from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
-    request_outside_digest_interval_or_exception,
     request_within_digest_limit_or_exception,
 )
 from app.models import Criteria, Digest, Peptide, User
@@ -48,7 +47,6 @@ def create_digest_job(
 
     user: User = User.find_one_by_or_raise(session, id=job_request.user_id)
     request_within_digest_limit_or_exception(user.id, session)
-    request_outside_digest_interval_or_exception(user.id, session)
 
     logger.debug(f"Digest checks passed for user_id={job_request.user_id}")
 
@@ -256,3 +254,25 @@ def get_digest_peptides_by_id(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while retrieving peptides. Please try again later.",
         ) from e
+
+
+@digest_router.get(
+    "/{user_id}/{digest_id}",
+    response_model=DigestResponse,
+    status_code=status.HTTP_200_OK,
+)
+def get_digest_by_id(
+    user_id: str,
+    digest_id: str,
+    api_key: str = Depends(verify_internal_api_key),
+    session: Session = Depends(get_db),
+):
+    """Get a single digest by ID for a specific user."""
+    digest: Digest = Digest.find_one_by_or_raise(
+        session,
+        user_id=user_id,
+        id=digest_id,
+    )
+
+    logger.info(f"Found digest={digest_id} for user_id={user_id}")
+    return DigestResponse.model_validate(digest)
