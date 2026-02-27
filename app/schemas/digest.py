@@ -99,6 +99,10 @@ class CriteriaResponse(BaseModel):
     goal: str = Field(..., description="Goal of the criteria")
     rationale: str = Field(..., description="Rationale for the criteria")
     rank: int = Field(..., description="Rank/priority of the criteria")
+    is_optional: bool = Field(
+        False,
+        description="Whether this criterion is optional (user can enable/disable per digest)",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

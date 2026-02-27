@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import digest_router, health_router, users_router
+from app.api import criteria_router, digest_router, health_router, users_router
 from app.core import settings
 from app.middleware import NginxValidatorMiddleware
 
@@ -20,3 +20,4 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(digest_router, prefix=settings.API_V1_PREFIX)
+app.include_router(criteria_router, prefix=settings.API_V1_PREFIX)

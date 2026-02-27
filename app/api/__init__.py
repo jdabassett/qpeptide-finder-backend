@@ -1,5 +1,6 @@
+from app.api.routes.criteria import criteria_router
 from app.api.routes.digest import digest_router
 from app.api.routes.health import health_router
 from app.api.routes.users import users_router
 
-__all__ = ["health_router", "users_router", "digest_router"]
+__all__ = ["health_router", "users_router", "digest_router", "criteria_router"]

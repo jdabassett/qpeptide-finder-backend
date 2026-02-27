@@ -2,8 +2,8 @@
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Boolean, Integer, String, Text, asc, select
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import Integer, String, Text, asc, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from app.enums import CriteriaEnum
@@ -42,6 +42,11 @@ class Criteria(BaseModelNoTimestamps):
         nullable=False,
         unique=True,
         index=True,
+    )
+    is_optional: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
     )
 
     # Relationship for querying peptides that match this criteria
