@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
+    request_criteria_ids_valid_or_exception,
     request_within_digest_limit_or_exception,
 )
 from app.models import Criteria, Digest, Peptide, User
@@ -47,6 +48,7 @@ def create_digest_job(
 
     user: User = User.find_one_by_or_raise(session, id=job_request.user_id)
     request_within_digest_limit_or_exception(user.id, session)
+    request_criteria_ids_valid_or_exception(job_request.criteria_ids, session)
 
     logger.debug(f"Digest checks passed for user_id={job_request.user_id}")
 
@@ -61,7 +63,7 @@ def create_digest_job(
             sequence=job_request.sequence,
         )
 
-        protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
+        protein_domain: ProteinDomain = ProteinDomain.generate(digest, job_request)
         background_tasks.add_task(process_digest_job, protein_domain)
 
         logger.info(

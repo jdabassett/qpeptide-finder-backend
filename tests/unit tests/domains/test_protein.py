@@ -2,6 +2,7 @@ import pytest
 
 from app.domain import ProteinDomain
 from app.enums import AminoAcidEnum, ProteaseEnum
+from app.schemas.digest import DigestJobRequest
 from tests.factories import DigestFactory, ProteinDomainFactory
 
 
@@ -62,8 +63,8 @@ def test_protein_domain_sequence_as_str_property() -> None:
 
 
 @pytest.mark.unit
-def test_protein_domain_from_digest(db_session) -> None:
-    """Test that from_digest creates ProteinDomain from Digest model."""
+def test_protein_domain_generate(db_session) -> None:
+    """Test that 'generate' creates ProteinDomain."""
     # setup
     digest = DigestFactory.create(
         sequence="MKTAYIAKQR",
@@ -72,13 +73,21 @@ def test_protein_domain_from_digest(db_session) -> None:
     db_session.add(digest)
     db_session.commit()
 
+    job_request = DigestJobRequest(
+        user_id=digest.user_id,
+        protein_name="test",
+        protease=digest.protease,
+        sequence=digest.sequence,
+    )
+
     # execute
-    protein_domain = ProteinDomain.from_digest(digest)
+    protein_domain = ProteinDomain.generate(digest, job_request)
 
     # validate
     assert protein_domain.digest_id == digest.id
     assert protein_domain.sequence == AminoAcidEnum.to_amino_acids("MKTAYIAKQR")
     assert protein_domain.protease == ProteaseEnum.TRYPSIN
+    assert protein_domain.criteria_ids == job_request.criteria_ids
 
 
 @pytest.mark.unit

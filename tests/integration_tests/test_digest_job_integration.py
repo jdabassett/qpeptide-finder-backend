@@ -111,3 +111,39 @@ def test_create_digest_job_integration(
             assert criteria_codes == expected_bad_peptide_criteria
         elif i == 0:
             assert criteria_codes == {CriteriaEnum.OUTLIER_HYDROPHOBICITY}
+
+
+@pytest.mark.integration
+def test_create_digest_job_invalid_criteria_ids_returns_400(
+    universal_protein: ProteinDomain,
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    """When criteria_ids contains an id not in the criteria table, request fails with 400."""
+    # setup
+    user = UserFactory.create()
+    invalid_criteria_id = "00000000-0000-0000-0000-000000000000"
+
+    request_data = {
+        "user_id": user.id,
+        "protease": ProteaseEnum.TRYPSIN.value,
+        "protein_name": "Test Protein",
+        "sequence": universal_protein.sequence_as_str,
+        "criteria_ids": [invalid_criteria_id],
+    }
+
+    # execute
+    response = client.post(
+        "/api/v1/digest/job",
+        json=request_data,
+    )
+
+    # validate:
+    assert response.status_code == 400
+    data = response.json()
+    assert "detail" in data
+    assert "Invalid criteria_id" in data["detail"]
+    assert invalid_criteria_id in data["detail"]
+
+    digest_count = db_session.query(Digest).filter(Digest.user_id == user.id).count()
+    assert digest_count == 0

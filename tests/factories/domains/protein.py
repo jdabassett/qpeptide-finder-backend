@@ -58,6 +58,11 @@ class ProteinDomainFactory(ModelFactory[ProteinDomain]):
         return set()
 
     @classmethod
+    def criteria_ids(cls) -> Any:
+        """Generate empty criteria_ids list by default."""
+        return []
+
+    @classmethod
     def build(cls, with_peptides: bool = False, **kwargs: Any) -> ProteinDomain:
         """
         Build a ProteinDomain instance with optional peptide population.

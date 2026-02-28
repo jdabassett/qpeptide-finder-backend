@@ -68,3 +68,19 @@ class Criteria(BaseModelNoTimestamps):
         """
         query = select(cls).order_by(asc(cls.rank))
         return list(session.scalars(query).all())
+
+    @classmethod
+    def get_ordered_for_digest(
+        cls, session: Session, criteria_ids: list[str]
+    ) -> list["Criteria"]:
+        """
+        Criteria rows to apply for this digest, in rank order.
+
+        - criteria_ids empty: all criteria (default).
+        - criteria_ids non-empty whose id is in criteria_ids.
+        """
+        all_criteria = cls.get_all_ordered_by_rank(session)
+        if not criteria_ids:
+            return all_criteria
+        criteria_ids_set = set(criteria_ids)
+        return [c for c in all_criteria if c.id in criteria_ids_set]

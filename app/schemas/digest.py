@@ -16,6 +16,7 @@ class DigestJobRequest(BaseModel):
     sequence: str = Field(
         ..., min_length=1, max_length=3000, description="Protein sequence"
     )
+    criteria_ids: list[str] = Field(default_factory=list, description="...")
 
     @field_validator("sequence", mode="before")
     @classmethod
@@ -95,6 +96,7 @@ class DigestListResponse(BaseModel):
 class CriteriaResponse(BaseModel):
     """Schema for criteria response."""
 
+    id: str = Field(..., description="Criteria ID")
     code: str = Field(..., description="Criteria code (enum value)")
     goal: str = Field(..., description="Goal of the criteria")
     rationale: str = Field(..., description="Rationale for the criteria")
