@@ -2,12 +2,10 @@
 Unit tests for CriteriaEvaluator.
 """
 
-from unittest.mock import MagicMock
-
 import pytest
 
 from app.domain import ProteinDomain
-from app.enums import CriteriaEnum
+from app.enums import CriteriaEnum, ProteaseEnum
 from app.services import CriteriaEvaluator
 
 
@@ -41,20 +39,15 @@ def test_evaluate_peptides_adds_criteria_to_peptides(
 
 
 @pytest.mark.unit
-def test_from_criteria_empty_list_yields_evaluator_with_no_filters() -> None:
-    """Test that from_criteria([]) returns an evaluator with no filters."""
-    evaluator = CriteriaEvaluator.from_criteria([])
-
-    assert len(evaluator.filters) == 0
-
-
-@pytest.mark.unit
 def test_from_criteria_subset_yields_evaluator_with_matching_filters() -> None:
     """Test that from_criteria with one criterion returns an evaluator with one filter."""
-    mock_criterion = MagicMock()
-    mock_criterion.code = CriteriaEnum.NOT_UNIQUE
+    protein_domain = ProteinDomain(
+        digest_id="",
+        protease=ProteaseEnum.TRYPSIN,
+        criteria=[CriteriaEnum.NOT_UNIQUE],
+    )
 
-    evaluator = CriteriaEvaluator.from_criteria([mock_criterion])
+    evaluator = CriteriaEvaluator.from_criteria(protein_domain)
 
     assert len(evaluator.filters) == 1
     assert evaluator.filters[0].criteria_enum == CriteriaEnum.NOT_UNIQUE

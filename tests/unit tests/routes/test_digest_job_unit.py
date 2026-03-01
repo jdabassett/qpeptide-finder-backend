@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
 from app.enums import ProteaseEnum
-from app.schemas.digest import DigestJobRequest
 from tests.factories import DigestFactory, ProteinDomainFactory, UserFactory
 
 
@@ -30,8 +29,6 @@ def test_create_digest_job_success(client: TestClient) -> None:
         "criteria_ids": [],
     }
 
-    expected_job_request = DigestJobRequest(**request_data)
-
     with (
         patch(
             "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
@@ -43,9 +40,9 @@ def test_create_digest_job_success(client: TestClient) -> None:
             "app.api.routes.digest.Digest.create", return_value=digest
         ) as mock_create,
         patch(
-            "app.api.routes.digest.ProteinDomain.generate",
+            "app.api.routes.digest.ProteinDomain.from_digest",
             return_value=protein_domain,
-        ) as mock_generate,
+        ) as mock_from_digest,
         patch("app.api.routes.digest.process_digest_job") as mock_process_job,
     ):
         # execute
@@ -62,7 +59,7 @@ def test_create_digest_job_success(client: TestClient) -> None:
     mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_limit_check.assert_called_once()
     mock_create.assert_called_once()
-    mock_generate.assert_called_once_with(digest, expected_job_request)
+    mock_from_digest.assert_called_once_with(digest)
     mock_process_job.assert_called_once_with(protein_domain)
 
 

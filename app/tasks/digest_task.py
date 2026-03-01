@@ -11,7 +11,7 @@ from app.db.session import SessionLocal
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import save_peptides_with_criteria
-from app.models import Criteria, Digest
+from app.models import Digest
 from app.services import CriteriaEvaluator
 
 logger = logging.getLogger(__name__)
@@ -46,11 +46,7 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
 
         logger.info(f"Digested protein for digest_id: {protein_domain.digest_id}")
 
-        ordered_criteria = Criteria.get_ordered_for_digest(
-            session, protein_domain.criteria_ids
-        )
-
-        evaluator = CriteriaEvaluator.from_criteria(ordered_criteria)
+        evaluator = CriteriaEvaluator.from_criteria(protein_domain)
 
         num_peptides_before = len(protein_domain.peptides)
         filter_start_time = time.perf_counter()

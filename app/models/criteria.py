@@ -10,7 +10,7 @@ from app.enums import CriteriaEnum
 from app.models.base import BaseModelNoTimestamps
 
 if TYPE_CHECKING:
-    from app.models import PeptideCriteria
+    from app.models import DigestCriteria, PeptideCriteria
 
 
 class Criteria(BaseModelNoTimestamps):
@@ -49,8 +49,11 @@ class Criteria(BaseModelNoTimestamps):
         nullable=False,
     )
 
-    # Relationship for querying peptides that match this criteria
     peptides: Mapped[list["PeptideCriteria"]] = relationship(
+        back_populates="criteria",
+    )
+
+    digest_criteria: Mapped[list["DigestCriteria"]] = relationship(
         back_populates="criteria",
     )
 
@@ -68,19 +71,3 @@ class Criteria(BaseModelNoTimestamps):
         """
         query = select(cls).order_by(asc(cls.rank))
         return list(session.scalars(query).all())
-
-    @classmethod
-    def get_ordered_for_digest(
-        cls, session: Session, criteria_ids: list[str]
-    ) -> list["Criteria"]:
-        """
-        Criteria rows to apply for this digest, in rank order.
-
-        - criteria_ids empty: all criteria (default).
-        - criteria_ids non-empty whose id is in criteria_ids.
-        """
-        all_criteria = cls.get_all_ordered_by_rank(session)
-        if not criteria_ids:
-            return all_criteria
-        criteria_ids_set = set(criteria_ids)
-        return [c for c in all_criteria if c.id in criteria_ids_set]

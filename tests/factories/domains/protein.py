@@ -10,7 +10,7 @@ from faker import Faker
 from polyfactory.factories.pydantic_factory import ModelFactory
 
 from app.domain import ProteinDomain
-from app.enums import AminoAcidEnum, ProteaseEnum
+from app.enums import AminoAcidEnum, CriteriaEnum, ProteaseEnum
 
 faker = Faker()
 
@@ -58,9 +58,9 @@ class ProteinDomainFactory(ModelFactory[ProteinDomain]):
         return set()
 
     @classmethod
-    def criteria_ids(cls) -> Any:
-        """Generate empty criteria_ids list by default."""
-        return []
+    def criteria(cls) -> Any:
+        """Generate list of all criteria enums by default."""
+        return list(CriteriaEnum)
 
     @classmethod
     def build(cls, with_peptides: bool = False, **kwargs: Any) -> ProteinDomain:

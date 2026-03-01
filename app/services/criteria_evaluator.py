@@ -8,7 +8,6 @@ from typing import Protocol
 
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import CriteriaEnum
-from app.models import Criteria
 from app.services.filters import (
     ContainsAsparagineGlycineMotifFilter,
     ContainsAsparticProlineMotifFilter,
@@ -84,10 +83,10 @@ class CriteriaEvaluator:
         return cls._default_filters
 
     @classmethod
-    def from_criteria(cls, ordered_criteria: list["Criteria"]) -> "CriteriaEvaluator":
+    def from_criteria(cls, protein_domain: "ProteinDomain") -> "CriteriaEvaluator":
         """Build an evaluator that only runs filters for the given criteria (by rank)."""
         filter_map = {f.criteria_enum: f for f in cls._get_default_filters()}
-        filters = [filter_map[c.code] for c in ordered_criteria if c.code in filter_map]
+        filters = [filter_map[e] for e in protein_domain.criteria if e in filter_map]
         return cls(filters)
 
     def evaluate_peptides(

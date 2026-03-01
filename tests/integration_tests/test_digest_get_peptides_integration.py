@@ -1,12 +1,15 @@
 """
-Unit tests for the digest peptides endpoint.
+Integration tests for the digest peptides endpoint.
 """
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
+from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum, ProteaseEnum
 from tests.factories import DigestFactory, UserFactory
 
@@ -102,6 +105,7 @@ def test_get_digest_peptides_by_id_no_peptides_found(
     """Test that 404 is returned when digest exists but has no peptides."""
     # setup
     user = UserFactory.create()
+    user_id = user.id
     digest = DigestFactory.create(
         user=user,
         status=DigestStatusEnum.PROCESSING,
@@ -111,7 +115,56 @@ def test_get_digest_peptides_by_id_no_peptides_found(
     db_session.commit()
 
     # execute
-    response = client.get(f"/api/v1/digest/{user.id}/{digest.id}/peptides")
+    response = client.get(f"/api/v1/digest/{user_id}/{digest.id}/peptides")
 
     # validate
     assert response.status_code == 404
+
+
+@pytest.mark.integration
+def test_get_digest_peptides_returns_only_digest_criteria(
+    universal_protein: ProteinDomain,
+    client: TestClient,
+    db_session: Session,
+    seeded_criteria: list,
+) -> None:
+    """GET peptides returns only the three criteria used for this digest, not all criteria."""
+    # setup
+    subset = seeded_criteria[:3]
+    expected_codes = {c.code.value for c in subset}
+    subset_ids = [c.id for c in subset]
+
+    user = UserFactory.create()
+    user_id = user.id
+    request_data = {
+        "user_id": user_id,
+        "protease": ProteaseEnum.TRYPSIN.value,
+        "protein_name": "Three Criteria Digest",
+        "sequence": universal_protein.sequence_as_str,
+        "criteria_ids": subset_ids,
+    }
+
+    with (
+        patch("app.tasks.digest_task.SessionLocal", return_value=db_session),
+        patch.object(db_session, "close", lambda: None),
+    ):
+        post_response = client.post("/api/v1/digest/job", json=request_data)
+
+    assert post_response.status_code == 201
+    digest_id = post_response.json()["digest_id"]
+
+    # execute
+    get_response = client.get(f"/api/v1/digest/{user.id}/{digest_id}/peptides")
+
+    # validate
+    assert get_response.status_code == 200
+    data = get_response.json()
+    assert data["digest_id"] == digest_id
+    criteria = data["criteria"]
+    assert len(criteria) == 3
+    returned_codes = {c["code"] for c in criteria}
+    assert returned_codes == expected_codes
+    for c in criteria:
+        assert "goal" in c
+        assert "rationale" in c
+        assert "rank" in c

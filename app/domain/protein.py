@@ -2,10 +2,9 @@
 from pydantic import BaseModel, Field
 
 from app.domain import PeptideDomain
-from app.enums import AminoAcidEnum, ProteaseEnum
+from app.enums import AminoAcidEnum, CriteriaEnum, ProteaseEnum
 from app.enums.enums import CleavageStatusEnum
 from app.models import Digest
-from app.schemas.digest import DigestJobRequest
 
 
 class ProteinDomain(BaseModel):
@@ -18,7 +17,7 @@ class ProteinDomain(BaseModel):
     cut_sites: set[int] = Field(default_factory=set)
     missed_cut_sites: set[int] = Field(default_factory=set)
     all_cut_sites: set[int] = Field(default_factory=set)
-    criteria_ids: list[str] = Field(default_factory=list)
+    criteria: list[CriteriaEnum] = Field(default_factory=list)
 
     @property
     def length(self) -> int:
@@ -30,15 +29,13 @@ class ProteinDomain(BaseModel):
         return "".join([aa.value for aa in self.sequence])
 
     @classmethod
-    def generate(
-        cls, digest: "Digest", job_request: "DigestJobRequest"
-    ) -> "ProteinDomain":
-        """Create ProteinDomain from a Digest database record and job_request."""
+    def from_digest(cls, digest: "Digest") -> "ProteinDomain":
+        """Create ProteinDomain from a Digest database record"""
         return cls(
             digest_id=digest.id,
             sequence=AminoAcidEnum.to_amino_acids(digest.sequence),
             protease=digest.protease,
-            criteria_ids=job_request.criteria_ids,
+            criteria=digest.retrieve_criteria_enums(),
         )
 
     def digest_sequence(self) -> None:
