@@ -277,7 +277,10 @@ def setup_digest_with_peptides(
         id=digest_id,
     )
 
-    with patch("app.tasks.digest_task.SessionLocal", return_value=db_session):
+    with (
+        patch("app.tasks.digest_task.SessionLocal", return_value=db_session),
+        patch.object(db_session, "close", lambda: None),
+    ):
         process_digest_job(universal_protein)
 
     db_session.commit()

@@ -10,9 +10,10 @@ from app.db.session import get_db
 from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import (
+    request_criteria_ids_valid_or_exception,
     request_within_digest_limit_or_exception,
 )
-from app.models import Criteria, Digest, Peptide, User
+from app.models import Digest, Peptide, User
 from app.schemas.digest import (
     DigestJobRequest,
     DigestJobResponse,
@@ -47,6 +48,7 @@ def create_digest_job(
 
     user: User = User.find_one_by_or_raise(session, id=job_request.user_id)
     request_within_digest_limit_or_exception(user.id, session)
+    request_criteria_ids_valid_or_exception(job_request.criteria_ids, session)
 
     logger.debug(f"Digest checks passed for user_id={job_request.user_id}")
 
@@ -59,6 +61,7 @@ def create_digest_job(
             protease=job_request.protease,
             protein_name=job_request.protein_name,
             sequence=job_request.sequence,
+            criteria_ids=job_request.criteria_ids,
         )
 
         protein_domain: ProteinDomain = ProteinDomain.from_digest(digest)
@@ -197,10 +200,10 @@ def get_digest_peptides_by_id(
             digest_id=digest_id,
         )
 
-        all_criteria = Criteria.get_all_ordered_by_rank(session)
+        criteria_for_digest = digest.get_criteria_ordered_by_rank()
 
         response = DigestPeptidesResponse.from_peptides(
-            digest.id, peptides, all_criteria
+            digest.id, peptides, criteria_for_digest
         )
 
         logger.info(
@@ -243,6 +246,15 @@ def get_digest_peptides_by_id(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing peptide data. Please contact support.",
+        ) from e
+    except ValueError as e:
+        logger.error(
+            f"Value error getting peptides: user_id={user_id}, "
+            f"digest_id={digest_id}, error={str(e)}",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
         ) from e
     except Exception as e:
         logger.error(

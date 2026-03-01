@@ -2,6 +2,7 @@ import pytest
 
 from app.domain import ProteinDomain
 from app.enums import AminoAcidEnum, ProteaseEnum
+from app.models import DigestCriteria
 from tests.factories import DigestFactory, ProteinDomainFactory
 
 
@@ -62,8 +63,8 @@ def test_protein_domain_sequence_as_str_property() -> None:
 
 
 @pytest.mark.unit
-def test_protein_domain_from_digest(db_session) -> None:
-    """Test that from_digest creates ProteinDomain from Digest model."""
+def test_protein_domain_from_digest(db_session, seeded_criteria) -> None:
+    """Test that from_digest creates ProteinDomain with criteria from digest_criteria."""
     # setup
     digest = DigestFactory.create(
         sequence="MKTAYIAKQR",
@@ -72,6 +73,11 @@ def test_protein_domain_from_digest(db_session) -> None:
     db_session.add(digest)
     db_session.commit()
 
+    for c in seeded_criteria:
+        db_session.add(DigestCriteria(digest_id=digest.id, criteria_code=c.code.value))
+    db_session.commit()
+    db_session.refresh(digest)
+
     # execute
     protein_domain = ProteinDomain.from_digest(digest)
 
@@ -79,6 +85,8 @@ def test_protein_domain_from_digest(db_session) -> None:
     assert protein_domain.digest_id == digest.id
     assert protein_domain.sequence == AminoAcidEnum.to_amino_acids("MKTAYIAKQR")
     assert protein_domain.protease == ProteaseEnum.TRYPSIN
+    expected_criteria = [c.code for c in seeded_criteria]
+    assert protein_domain.criteria == expected_criteria
 
 
 @pytest.mark.unit

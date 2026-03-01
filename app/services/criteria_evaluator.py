@@ -8,6 +8,22 @@ from typing import Protocol
 
 from app.domain import PeptideDomain, ProteinDomain
 from app.enums import CriteriaEnum
+from app.services.filters import (
+    ContainsAsparagineGlycineMotifFilter,
+    ContainsAsparticProlineMotifFilter,
+    ContainsCysteineFilter,
+    ContainsLongHomopolymericStretchFilter,
+    ContainsMethionineFilter,
+    ContainsMissedCleavagesFilter,
+    ContainsNTerminalGlutamineMotifFilter,
+    HasFlankingCutSitesFilter,
+    LackingFlankingAminoAcidsFilter,
+    NotUniqueFilter,
+    OutlierChargeStateFilter,
+    OutlierHydrophobicityFilter,
+    OutlierLengthFilter,
+    OutlierPIFilter,
+)
 
 
 class CriteriaFilter(Protocol):
@@ -34,6 +50,8 @@ class CriteriaEvaluator:
     and records which criteria each peptide meets.
     """
 
+    _default_filters: list[CriteriaFilter] | None = None
+
     def __init__(
         self,
         filters: Sequence[CriteriaFilter],
@@ -42,6 +60,34 @@ class CriteriaEvaluator:
         Initialize the evaluator with a list of filters.
         """
         self.filters = list(filters)
+
+    @classmethod
+    def _get_default_filters(cls) -> list[CriteriaFilter]:
+        if cls._default_filters is None:
+            cls._default_filters = [
+                ContainsAsparagineGlycineMotifFilter(),
+                ContainsAsparticProlineMotifFilter(),
+                ContainsCysteineFilter(),
+                ContainsLongHomopolymericStretchFilter(),
+                ContainsMethionineFilter(),
+                ContainsMissedCleavagesFilter(),
+                ContainsNTerminalGlutamineMotifFilter(),
+                HasFlankingCutSitesFilter(),
+                LackingFlankingAminoAcidsFilter(),
+                NotUniqueFilter(),
+                OutlierChargeStateFilter(),
+                OutlierHydrophobicityFilter(),
+                OutlierLengthFilter(),
+                OutlierPIFilter(),
+            ]
+        return cls._default_filters
+
+    @classmethod
+    def from_criteria(cls, protein_domain: "ProteinDomain") -> "CriteriaEvaluator":
+        """Build an evaluator that only runs filters for the given criteria (by rank)."""
+        filter_map = {f.criteria_enum: f for f in cls._get_default_filters()}
+        filters = [filter_map[e] for e in protein_domain.criteria if e in filter_map]
+        return cls(filters)
 
     def evaluate_peptides(
         self,
@@ -58,9 +104,13 @@ class CriteriaEvaluator:
                 if filter_instance.evaluate(peptide, protein):
                     peptide.add_criteria(filter_instance.criteria_enum)
 
-        weights = CriteriaEnum.criteria_weights()
-        peptide_weights: list[tuple[PeptideDomain, float]] = []
+        ordered_enums: list[CriteriaEnum] = [f.criteria_enum for f in self.filters]
+        n = len(ordered_enums)
+        weights: dict[CriteriaEnum, float] = {}
+        for idx, enum in enumerate(ordered_enums):
+            weights[enum] = 2 ** (n - 1 - idx)
 
+        peptide_weights: list[tuple[PeptideDomain, float]] = []
         for peptide in protein.peptides:
             total_weight = 0.0
             for criteria_enum in peptide.criteria:
@@ -68,6 +118,5 @@ class CriteriaEvaluator:
             peptide_weights.append((peptide, total_weight))
 
         peptide_weights.sort(key=lambda x: x[1])
-
         for rank, (peptide, _) in enumerate(peptide_weights, start=1):
             peptide.rank = rank

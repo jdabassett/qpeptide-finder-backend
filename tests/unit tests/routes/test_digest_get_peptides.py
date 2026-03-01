@@ -8,7 +8,7 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy.exc import DatabaseError, OperationalError
+from sqlalchemy.exc import DatabaseError
 
 from app.models import Criteria
 from app.schemas.digest import CriteriaResponse, DigestPeptidesResponse, PeptideResponse
@@ -67,9 +67,9 @@ def test_get_digest_peptides_by_id_success(
             return_value=peptides,
         ) as mock_get_peptides,
         patch(
-            "app.api.routes.digest.Criteria.get_all_ordered_by_rank",
+            "app.api.routes.digest.Digest.get_criteria_ordered_by_rank",
             return_value=criteria,
-        ) as mock_get_criteria,
+        ) as mock_get_criteria_ordered_by_rank,
         patch(
             "app.api.routes.digest.DigestPeptidesResponse.from_peptides",
             return_value=response_data,
@@ -88,7 +88,7 @@ def test_get_digest_peptides_by_id_success(
     mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_get_digest.assert_called_once_with(ANY, user_id=user.id, id=digest.id)
     mock_get_peptides.assert_called_once_with(ANY, digest_id=digest.id)
-    mock_get_criteria.assert_called_once_with(ANY)
+    mock_get_criteria_ordered_by_rank.assert_called_once()
     mock_from_peptides.assert_called_once_with(digest.id, peptides, criteria)
 
 
@@ -231,10 +231,10 @@ def test_get_digest_peptides_database_error(client: TestClient) -> None:
             return_value=peptides,
         ) as mock_get_peptides,
         patch(
-            "app.api.routes.digest.Criteria.get_all_ordered_by_rank"
-        ) as mock_get_criteria,
+            "app.api.routes.digest.Digest.get_criteria_ordered_by_rank",
+        ) as mock_get_criteria_ordered_by_rank,
     ):
-        mock_get_criteria.side_effect = DatabaseError(
+        mock_get_criteria_ordered_by_rank.side_effect = DatabaseError(
             "Database connection failed", None, Exception("Database connection failed")
         )
 
@@ -248,47 +248,7 @@ def test_get_digest_peptides_database_error(client: TestClient) -> None:
     mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_get_digest.assert_called_once_with(ANY, user_id=user.id, id=digest.id)
     mock_get_peptides.assert_called_once_with(ANY, digest_id=digest.id)
-    mock_get_criteria.assert_called_once_with(ANY)
-
-
-@pytest.mark.unit
-def test_get_digest_peptides_operational_error(client: TestClient) -> None:
-    """Test that 500 is returned when operational error occurs."""
-    # setup
-    user = UserFactory.build()
-    digest = DigestFactory.build(user=user)
-    peptides = [PeptideFactory.build(digest=digest)]
-
-    with (
-        patch(
-            "app.api.routes.digest.User.find_one_by_or_raise", return_value=user
-        ) as mock_get_user,
-        patch(
-            "app.api.routes.digest.Digest.find_one_by_or_raise", return_value=digest
-        ) as mock_get_digest,
-        patch(
-            "app.api.routes.digest.Peptide.find_by_digest_id_ordered_by_rank_or_raise",
-            return_value=peptides,
-        ) as mock_get_peptides,
-        patch(
-            "app.api.routes.digest.Criteria.get_all_ordered_by_rank"
-        ) as mock_get_criteria,
-    ):
-        mock_get_criteria.side_effect = OperationalError(
-            "Connection lost", None, Exception("Connection lost")
-        )
-
-        # execute
-        response = client.get(f"/api/v1/digest/{user.id}/{digest.id}/peptides")
-
-    # validate
-    assert response.status_code == 500
-    data = response.json()
-    assert "database error" in data["detail"].lower()
-    mock_get_user.assert_called_once_with(ANY, id=user.id)
-    mock_get_digest.assert_called_once_with(ANY, user_id=user.id, id=digest.id)
-    mock_get_peptides.assert_called_once_with(ANY, digest_id=digest.id)
-    mock_get_criteria.assert_called_once_with(ANY)
+    mock_get_criteria_ordered_by_rank.assert_called_once()
 
 
 @pytest.mark.unit
@@ -315,9 +275,9 @@ def test_get_digest_peptides_validation_error(
             return_value=peptides,
         ) as mock_get_peptides,
         patch(
-            "app.api.routes.digest.Criteria.get_all_ordered_by_rank",
+            "app.api.routes.digest.Digest.get_criteria_ordered_by_rank",
             return_value=criteria,
-        ) as mock_get_criteria,
+        ) as mock_get_criteria_ordered_by_rank,
         patch(
             "app.api.routes.digest.DigestPeptidesResponse.from_peptides"
         ) as mock_from_peptides,
@@ -351,7 +311,7 @@ def test_get_digest_peptides_validation_error(
     mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_get_digest.assert_called_once_with(ANY, user_id=user.id, id=digest.id)
     mock_get_peptides.assert_called_once_with(ANY, digest_id=digest.id)
-    mock_get_criteria.assert_called_once_with(ANY)
+    mock_get_criteria_ordered_by_rank.assert_called_once()
     mock_from_peptides.assert_called_once_with(digest.id, peptides, criteria)
 
 
@@ -382,9 +342,9 @@ def test_get_digest_peptides_attribute_error(
             return_value=peptides,
         ) as mock_get_peptides,
         patch(
-            "app.api.routes.digest.Criteria.get_all_ordered_by_rank",
+            "app.api.routes.digest.Digest.get_criteria_ordered_by_rank",
             return_value=criteria,
-        ) as mock_get_criteria,
+        ) as mock_get_criteria_ordered_by_rank,
         patch(
             "app.api.routes.digest.DigestPeptidesResponse.from_peptides"
         ) as mock_from_peptides,
@@ -406,7 +366,7 @@ def test_get_digest_peptides_attribute_error(
     mock_get_user.assert_called_once_with(ANY, id=user.id)
     mock_get_digest.assert_called_once_with(ANY, user_id=user.id, id=digest.id)
     mock_get_peptides.assert_called_once_with(ANY, digest_id=digest.id)
-    mock_get_criteria.assert_called_once_with(ANY)
+    mock_get_criteria_ordered_by_rank.assert_called_once_with()
     mock_from_peptides.assert_called_once_with(digest.id, peptides, criteria)
 
 

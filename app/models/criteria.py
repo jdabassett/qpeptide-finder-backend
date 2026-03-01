@@ -2,15 +2,15 @@
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Boolean, Integer, String, Text, asc, select
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import Integer, String, Text, asc, select
 from sqlalchemy.orm import Mapped, Session, mapped_column, relationship
 
 from app.enums import CriteriaEnum
 from app.models.base import BaseModelNoTimestamps
 
 if TYPE_CHECKING:
-    from app.models import PeptideCriteria
+    from app.models import DigestCriteria, PeptideCriteria
 
 
 class Criteria(BaseModelNoTimestamps):
@@ -43,9 +43,17 @@ class Criteria(BaseModelNoTimestamps):
         unique=True,
         index=True,
     )
+    is_optional: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
 
-    # Relationship for querying peptides that match this criteria
     peptides: Mapped[list["PeptideCriteria"]] = relationship(
+        back_populates="criteria",
+    )
+
+    digest_criteria: Mapped[list["DigestCriteria"]] = relationship(
         back_populates="criteria",
     )
 

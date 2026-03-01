@@ -12,46 +12,9 @@ from app.domain import ProteinDomain
 from app.enums import DigestStatusEnum
 from app.helpers import save_peptides_with_criteria
 from app.models import Digest
-from app.services import (
-    ContainsAsparagineGlycineMotifFilter,
-    ContainsAsparticProlineMotifFilter,
-    ContainsCysteineFilter,
-    ContainsLongHomopolymericStretchFilter,
-    ContainsMethionineFilter,
-    ContainsMissedCleavagesFilter,
-    ContainsNTerminalGlutamineMotifFilter,
-    CriteriaEvaluator,
-    HasFlankingCutSitesFilter,
-    LackingFlankingAminoAcidsFilter,
-    NotUniqueFilter,
-    OutlierChargeStateFilter,
-    OutlierHydrophobicityFilter,
-    OutlierLengthFilter,
-    OutlierPIFilter,
-)
+from app.services import CriteriaEvaluator
 
 logger = logging.getLogger(__name__)
-
-
-def create_default_criteria_evaluator() -> CriteriaEvaluator:
-    """Create a default criteria evaluator with standard filters."""
-    filters = [
-        ContainsAsparagineGlycineMotifFilter(),
-        ContainsAsparticProlineMotifFilter(),
-        ContainsCysteineFilter(),
-        ContainsLongHomopolymericStretchFilter(),
-        ContainsMethionineFilter(),
-        ContainsMissedCleavagesFilter(),
-        ContainsNTerminalGlutamineMotifFilter(),
-        HasFlankingCutSitesFilter(),
-        LackingFlankingAminoAcidsFilter(),
-        NotUniqueFilter(),
-        OutlierChargeStateFilter(),
-        OutlierHydrophobicityFilter(),
-        OutlierLengthFilter(),
-        OutlierPIFilter(),
-    ]
-    return CriteriaEvaluator(filters)
 
 
 def process_digest_job(protein_domain: ProteinDomain) -> None:
@@ -83,7 +46,7 @@ def process_digest_job(protein_domain: ProteinDomain) -> None:
 
         logger.info(f"Digested protein for digest_id: {protein_domain.digest_id}")
 
-        evaluator = create_default_criteria_evaluator()
+        evaluator = CriteriaEvaluator.from_criteria(protein_domain)
 
         num_peptides_before = len(protein_domain.peptides)
         filter_start_time = time.perf_counter()

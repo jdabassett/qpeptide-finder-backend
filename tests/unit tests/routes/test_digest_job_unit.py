@@ -26,6 +26,7 @@ def test_create_digest_job_success(client: TestClient) -> None:
         "protease": ProteaseEnum.TRYPSIN.value,
         "protein_name": "Test Protein",
         "sequence": "MKTAYIAKQR",
+        "criteria_ids": [],
     }
 
     with (

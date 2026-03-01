@@ -271,19 +271,3 @@ class CriteriaEnum(str, Enum):
             CriteriaEnum.LACKING_FLANKING_AMINO_ACIDS,
             CriteriaEnum.CONTAINS_CYSTEINE,
         ]
-
-    @classmethod
-    @lru_cache
-    def criteria_weights(cls) -> dict["CriteriaEnum", float]:
-        """
-        Calculate weights for each criteria enum based on importance.
-        """
-
-        ordered_enums = cls.order_least_to_most_important()
-        n = len(ordered_enums)
-        weights: dict[CriteriaEnum, float] = {}
-
-        for i, enum in enumerate(ordered_enums):
-            weights[enum] = 2 ** (n - 1 - i)
-
-        return weights

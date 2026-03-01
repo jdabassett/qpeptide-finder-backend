@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core import settings
-from app.models import Digest
+from app.models import Criteria, Digest
 
 
 def request_within_digest_limit_or_exception(user_id: str, session: Session) -> None:
@@ -34,3 +34,33 @@ def request_within_digest_limit_or_exception(user_id: str, session: Session) -> 
         )
 
     return
+
+
+def request_criteria_ids_valid_or_exception(
+    criteria_ids: list[str], session: Session
+) -> None:
+    """
+    Check that every criteria_id exists in the criteria table.
+
+    Args:
+        criteria_ids: List of criteria IDs from the request (may be empty).
+        session: Database session.
+
+    Raises:
+        HTTPException: 400 if any criteria_id is not found.
+    """
+    if not criteria_ids:
+        return
+
+    found_ids = set(
+        session.scalars(select(Criteria.id).where(Criteria.id.in_(criteria_ids))).all()
+    )
+    invalid = [cid for cid in criteria_ids if cid not in found_ids]
+    if invalid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Invalid criteria_id(s). No criteria found for: "
+                f"{', '.join(invalid)}."
+            ),
+        )
