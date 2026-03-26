@@ -178,7 +178,7 @@ jobs:
             # Fetch frontend secrets from AWS Secrets Manager
             echo "🔐 Fetching frontend secrets from AWS Secrets Manager..."
             FRONTEND_SECRETS=$(aws secretsmanager get-secret-value \
-              --secret-id qpeptide-cutter-frontend/secrets \
+              --secret-id qpeptide-finder-frontend/secrets \
               --region "$AWS_REGION" \
               --query SecretString \
               --output text 2>&1)

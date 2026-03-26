@@ -91,7 +91,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: testpassword
-          MYSQL_DATABASE: qpeptide_cutter_test
+          MYSQL_DATABASE: qpeptide_finder_test
           MYSQL_USER: testuser
           MYSQL_PASSWORD: testpassword
         ports:
@@ -135,7 +135,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: mysql+pymysql://testuser:testpassword@localhost:3306/qpeptide_cutter_test
+          DATABASE_URL: mysql+pymysql://testuser:testpassword@localhost:3306/qpeptide_finder_test
           CI: true
         run: poetry run pytest tests/ -v --tb=short
 
@@ -171,7 +171,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: false
-          tags: qpeptide-cutter-backend:test
+          tags: qpeptide-finder-backend:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
           load: true
@@ -179,7 +179,7 @@ jobs:
       - name: Test Docker image
         run: |
           # Verify image was built
-          docker images | grep qpeptide-cutter-backend
+          docker images | grep qpeptide-finder-backend
 
           # Test that the container starts (with a timeout)
           timeout 30 docker run --rm \
@@ -189,7 +189,7 @@ jobs:
             -e MYSQL_ROOT_PASSWORD="rootpassword" \
             -e MYSQL_USER="qpeptide_user" \
             -e DB_NAME="qpeptide-db" \
-            qpeptide-cutter-backend:test \
+            qpeptide-finder-backend:test \
             uvicorn app.main:app --host 0.0.0.0 --port 8000 &
 
           # Wait a moment for startup
@@ -207,11 +207,11 @@ jobs:
       - name: Validate image metadata
         run: |
           # Check image size (optional - warn if too large)
-          IMAGE_SIZE=$(docker images qpeptide-cutter-backend:test --format "{{.Size}}")
+          IMAGE_SIZE=$(docker images qpeptide-finder-backend:test --format "{{.Size}}")
           echo "Image size: $IMAGE_SIZE"
 
           # Verify working directory (bypass entrypoint - we don't need MySQL for this)
-          docker run --rm --entrypoint="" qpeptide-cutter-backend:test pwd | grep -q "/app" && echo "Working directory correct"
+          docker run --rm --entrypoint="" qpeptide-finder-backend:test pwd | grep -q "/app" && echo "Working directory correct"
 
           # Verify Python version (bypass entrypoint - we don't need MySQL for this)
-          docker run --rm --entrypoint="" qpeptide-cutter-backend:test python --version | grep -q "Python 3.13" && echo "Python version correct"
+          docker run --rm --entrypoint="" qpeptide-finder-backend:test python --version | grep -q "Python 3.13" && echo "Python version correct"

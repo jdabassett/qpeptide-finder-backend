@@ -130,7 +130,7 @@ class Settings(BaseSettings):
     )
 
     # AWS Secrets Manager configuration
-    AWS_SECRET_NAME: str = "qpeptide-cutter-backend/secrets"
+    AWS_SECRET_NAME: str = "qpeptide-finder-backend/secrets"
     AWS_REGION: str | None = None
 
     # Database - MySQL

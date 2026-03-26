@@ -25,7 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: qpeptide-cutter-backend-local
+    container_name: qpeptide-finder-backend-local
     restart: unless-stopped
     ports:
       - "8000:8000"
