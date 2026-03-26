@@ -18,6 +18,6 @@ def health(session: Session = Depends(get_db)):
 
     return {
         "status": "healthy",
-        "service": "qpeptide-cutter-backend",
+        "service": "qpeptide-finder-backend",
         "database": db_status,
     }

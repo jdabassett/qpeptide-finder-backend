@@ -1,5 +1,5 @@
 [project]
-name = "qpeptide-cutter-backend"
+name = "qpeptide-finder-backend"
 version = "0.1.0"
 description = ""
 authors = [

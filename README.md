@@ -85,7 +85,7 @@ Before you begin, ensure you have the following installed on your machine:
 1. **Clone the repository**
    ```
    git clone git@github.com:jdabassett/qpeptide-finder-backend.git
-   cd qpeptide-cutter-backend
+   cd qpeptide-finder-backend
    ```
 2. **Set up environment variables**
 
