@@ -87,6 +87,7 @@ Before you begin, ensure you have the following installed on your machine:
    git clone git@github.com:jdabassett/qpeptide-finder-backend.git
    cd qpeptide-finder-backend
    ```
+
 2. **Set up environment variables**
 
    Copy the example environment file and customize it as needed:
