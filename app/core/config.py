@@ -36,7 +36,7 @@ def load_aws_secrets(
 
     Args:
         secret_name: Name of the secret in AWS Secrets Manager
-        region_name: AWS region (defaults to AWS_REGION env var or us-east-1)
+        region_name: AWS region (defaults to AWS_REGION env var or us-east-2)
 
     Returns:
         Dictionary of secret key-value pairs
@@ -49,7 +49,7 @@ def load_aws_secrets(
     aws_error_level = logging.ERROR if is_production else logging.DEBUG
 
     try:
-        region = region_name or os.getenv("AWS_REGION", "us-east-1")
+        region = region_name or os.getenv("AWS_REGION", "us-east-2")
 
         session = boto3.session.Session()
         client = session.client(service_name="secretsmanager", region_name=region)
