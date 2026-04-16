@@ -16,7 +16,6 @@
 
 ## Description
 
-
 The **QPeptide Finder API** is a specialized backend service designed to analyze protein sequences and evaluate the suitability of each resulting peptide for use as a quantitative proteomics peptide (QPeptide). As the core processing engine of the QPeptide Finder service, this API performs computationally intensive peptide analysis, maintains comprehensive records of all digests and evaluations, and serves as the data layer for the frontend application.
 
 #### What It Does
